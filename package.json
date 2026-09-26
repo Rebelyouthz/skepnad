@@ -1,0 +1,28 @@
+{
+  "name": "skepnad",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Skepnad – live-avatar, röstförvandlare och kamerafilter för streaming. Allt körs lokalt i webbläsaren.",
+  "type": "module",
+  "scripts": {
+    "setup": "node scripts/fetch-assets.mjs",
+    "postinstall": "node scripts/fetch-assets.mjs",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "serve": "node serve.mjs",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/sora": "^5.3.0",
+    "@mediapipe/tasks-vision": "^1.0.1",
+    "@pixiv/three-vrm": "^3.5.5",
+    "lucide": "^1.48.0",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
+  }
+}

@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="sv">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Skepnad – Sändning</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <style>
+      html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor: none; }
+      video { width: 100%; height: 100%; object-fit: contain; display: block; background: #000; }
+      .msg { position: fixed; inset: 0; display: grid; place-items: center; color: #a8a3c7; font: 15px 'Segoe UI', sans-serif; text-align: center; padding: 20px; cursor: default; }
+      .msg[hidden] { display: none; }
+    </style>
+  </head>
+  <body>
+    <video autoplay muted playsinline></video>
+    <div class="msg" hidden>Öppna det här fönstret från Skepnad (Sändning → Sändningsfönster).</div>
+    <script type="module" src="/src/output.js"></script>
+  </body>
+</html>
