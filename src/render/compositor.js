@@ -66,11 +66,16 @@ export class Compositor {
     this.setQuality('balanced');
   }
 
-  setQuality(q) {
+  setQuality(q, aspect = this.aspect || 'landscape') {
     const Q = QUALITY[q] ?? QUALITY.balanced;
-    if (this.quality === q) return;
+    const key = `${q}:${aspect}`;
+    if (this.qualityKey === key) return;
+    this.qualityKey = key;
     this.quality = q;
-    const { w, h } = Q;
+    this.aspect = aspect;
+    const portrait = aspect === 'portrait';
+    const w = portrait ? Q.h : Q.w;
+    const h = portrait ? Q.w : Q.h;
     this.width = w;
     this.height = h;
     this.renderer.setSize(w, h, false);

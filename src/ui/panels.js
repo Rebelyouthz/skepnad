@@ -11,6 +11,7 @@ import { SOUNDS } from '../audio/sfx.js';
 import { EFFECTS } from '../app/effects.js';
 import { THROWABLES } from '../render/fx/throwables.js';
 import { BUILTIN_PERSONAS } from '../app/personas.js';
+import { SHARE_TABS, SHARE_PANELS } from './panelsShare.js';
 
 export const esc = (s = '') => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -37,6 +38,7 @@ const dropzone = (action, arg, title, sub, accept) =>
   `<label class="dropzone" data-drop="${action}" data-arg="${arg}" data-tip="${esc(title)}|${esc(sub)}">${icon('upload', 20)}<b>${title}</b><span>${sub}</span><input type="file" accept="${accept}" hidden data-file="${action}" data-arg="${arg}"></label>`;
 
 export const TABS = [
+  { id: 'home', ...SHARE_TABS.home },
   { id: 'personas', icon: 'drama', label: 'Skepnader', tip: 'Skepnader|Färdiga kombinationer av utseende och röst. Byt hela din look med ett klick.' },
   { id: 'avatar', icon: 'bot', label: 'Avatar', tip: 'Avatar|Byt ut dig själv mot en 3D-figur som härmar dina miner och huvudrörelser.' },
   { id: 'background', icon: 'mountain', label: 'Bakgrund', tip: 'Bakgrund|Levande platser, oskärpa, egen bild eller greenscreen bakom dig.' },
@@ -46,7 +48,10 @@ export const TABS = [
   { id: 'soundboard', icon: 'drum', label: 'Ljudbord', tip: 'Ljudbord|Spela ljudeffekter i sändningen: tuta, applåder, trumvirvel…' },
   { id: 'effects', icon: 'party', label: 'Effekter', tip: 'Effekter|Konfetti, hjärtan, fyrverkeri – via knappar, gester eller ansiktsuttryck.' },
   { id: 'overlay', icon: 'layers', label: 'Overlay', tip: 'Overlay|Namnskylt, live-textning, klocka och LIVE-märke ovanpå bilden.' },
-  { id: 'stream', icon: 'tower', label: 'Sändning', tip: 'Sändning|Skicka bild och ljud till OBS, Discord eller Zoom. Inspelning och Twitch-chatt.' },
+  { id: 'clips', group: 'share', ...SHARE_TABS.clips },
+  { id: 'live', ...SHARE_TABS.live },
+  { id: 'calls', ...SHARE_TABS.calls },
+  { id: 'phone', ...SHARE_TABS.phone },
   { id: 'settings', icon: 'settings', label: 'Inställn.', tip: 'Inställningar|Kvalitet, gränssnittsljud, hjälp och återställning.' },
 ];
 
@@ -325,39 +330,6 @@ const PANELS = {
           { value: 'cinema', label: 'Biograf', tip: 'Biograf|Svarta filmränder upptill och nertill (2.39:1).' },
         ])}</div>`)}`,
   },
-  stream: {
-    title: 'Sändning',
-    sub: 'Få ut bild och ljud till OBS, Discord, Zoom, Teams eller Twitch.',
-    render: () => `
-      ${section('Bild', `
-        <div class="row" style="margin-bottom:12px">${btn('outputWindow', 'Sändningsfönster', 'external', 'Sändningsfönster|Öppnar ett rent fönster med bara bilden – fånga det i OBS med Fönsterinspelning.', 'btn-primary')}${btn('cleanView', 'Ren vy', 'eye-off', 'Ren vy|Döljer hela gränssnittet så att bara bilden syns. Tryck H eller Esc för att komma tillbaka.')}</div>
-        <ol class="steps">
-          <li>Klicka <b>Sändningsfönster</b>.</li>
-          <li>I <b>OBS</b>: Källor → + → <b>Fönsterinspelning</b> → välj <b>Skepnad – Sändning</b>.</li>
-          <li>För Discord/Zoom/Teams: klicka <b>Starta virtuell kamera</b> i OBS och välj <b>OBS Virtual Camera</b> som kamera i appen.</li>
-        </ol>
-        <div style="height:8px"></div>
-        ${note('Vill du lägga dig ovanpå ett spel? Välj bakgrunden <b>Greenscreen</b> och lägg till filtret <b>Chroma Key</b> på källan i OBS.')}`)}
-      ${section('Ljud', `
-        ${select('voice.outputDevice', 'Skicka rösten till', [{ value: '', label: 'Ingen extra utgång' }], { tip: 'Ljudutgång|Välj en virtuell kabel (t.ex. CABLE Input) så kan Discord/OBS använda din förvrängda röst som mikrofon.' })}
-        <ol class="steps">
-          <li>Installera gratisprogrammet <b>VB-Audio Virtual Cable</b>.</li>
-          <li>Välj <b>CABLE Input</b> i listan ovan.</li>
-          <li>I Discord/OBS/Zoom: välj <b>CABLE Output</b> som mikrofon.</li>
-        </ol>
-        <div class="row" style="margin-top:10px">${btn('testOutput', 'Testa ljudet', 'volume', 'Testa|Spelar ett pling i sändningsljudet så att du kan kolla att det kommer fram.', 'sm')}</div>`)}
-      ${section('Inspelning', `<div class="row">${btn('record', 'Spela in', 'rec', 'Spela in|Spelar in bild och ljud till en WebM-fil i Hämtade filer.', '', '')}${btn('screenshot', 'Skärmdump', 'camera', 'Skärmdump|Sparar en PNG-bild av det tittarna ser.')}</div>`)}
-      ${section('Twitch-chatt', `
-        <div class="field"><label>Kanalnamn</label><input type="text" data-bind="twitch.channel" placeholder="t.ex. dittnamn" maxlength="30"></div>
-        ${toggle('twitch.enabled', 'Anslut till chatten', 'Twitch-chatt|Läser chatten anonymt – ingen inloggning behövs. Tittarna kan trigga effekter med kommandon.')}
-        <div class="row" style="margin:6px 0 12px"><span class="chip" data-twitch-status><span class="dot"></span><span>Inte ansluten</span></span></div>
-        ${slider('twitch.cooldown', 'Nedkylning per kommando', 2, 60, 1, 's', 'Nedkylning|Hur länge ett kommando måste vila innan det kan användas igen.', 8)}
-        ${toggle('twitch.allowVoice', 'Tillåt röstkommandon', 'Röstkommandon|Tittare kan byta din röst i 10 sekunder med !robot, !ekorre, !demon, !helium, !radio.')}
-        <div class="section-title" style="margin-top:12px">Kommandon</div>
-        <p style="font-size:12px;color:var(--muted);line-height:1.8;margin:0 0 10px">${EFFECTS.map((e) => `<kbd>!${e.cmd}</kbd>`).join(' ')} <kbd>!robot</kbd> <kbd>!ekorre</kbd> <kbd>!demon</kbd> <kbd>!helium</kbd> <kbd>!radio</kbd></p>
-        <div class="row"><input type="text" id="cmd-test" placeholder="!konfetti" maxlength="40">${btn('testCommand', 'Testa', 'send', 'Testa kommando|Simulera ett chattmeddelande lokalt.', 'sm')}</div>`)}
-      ${section('Kamera', select('video.cameraId', 'Kamera', [{ value: '', label: 'Standard' }], { tip: 'Kamera|Välj vilken kamera som används.' }))}`,
-  },
   settings: {
     title: 'Inställningar',
     sub: 'Prestanda, gränssnitt och hjälp.',
@@ -369,6 +341,12 @@ const PANELS = {
           { value: 'fast', label: '540p', tip: 'Snabb|För äldre datorer och bärbara.' },
         ])}
         <p style="font-size:12px;color:var(--muted)" data-perf>–</p>`)}
+      ${section('Kamera & format', `
+        ${select('video.cameraId', 'Kamera', [{ value: '', label: 'Standard' }], { tip: 'Kamera|Välj vilken kamera som används.' })}
+        <div class="field"><label>Format</label>${seg('video.aspect', [
+          { value: 'landscape', label: 'Liggande 16:9', icon: 'landscape', tip: 'Liggande|För YouTube, Twitch och samtal.' },
+          { value: 'portrait', label: 'Stående 9:16', icon: 'portrait', tip: 'Stående|För TikTok, Shorts och Reels.' },
+        ])}</div>`)}
       ${section('Gränssnitt', `
         ${toggle('ui.sounds', 'Gränssnittsljud', 'Gränssnittsljud|Diskreta ljud när du klickar och hovrar. Hörs bara för dig, aldrig i sändningen.')}
         ${slider('ui.soundVolume', 'Volym', 0, 1, 0.01, 'pct', 'Volym|Gränssnittsljudens volym.', 0.55)}
@@ -381,5 +359,5 @@ const PANELS = {
 };
 
 export function panelFor(id) {
-  return PANELS[id] ?? PANELS.personas;
+  return SHARE_PANELS[id] ?? PANELS[id] ?? SHARE_PANELS.home;
 }

@@ -19,6 +19,7 @@
     "@mediapipe/tasks-vision": "^1.0.1",
     "@pixiv/three-vrm": "^3.5.5",
     "lucide": "^1.48.0",
+    "qrcode-generator": "^2.0.4",
     "three": "^0.186.1"
   },
   "devDependencies": {

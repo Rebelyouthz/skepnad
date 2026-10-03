@@ -47,6 +47,7 @@ export class AvatarLayer {
 
   setAspect(a) {
     this.camera.aspect = a;
+    this.camera.fov = a < 1 ? 52 : 30;
     this.camera.updateProjectionMatrix();
   }
 

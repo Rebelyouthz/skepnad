@@ -59,7 +59,10 @@ export class AudioEngine {
       await ctx.audioWorklet.addModule(WORKLET_URL());
       this.voice = new AudioWorkletNode(ctx, 'skepnad-voice', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
       this.voice.port.onmessage = (e) => {
-        if (e.data?.type === 'meter') this.meter = e.data;
+        if (e.data?.type === 'meter') {
+          this.meter = e.data;
+          this.onHeartbeat?.();
+        }
       };
       this.workletOk = true;
     } catch (err) {

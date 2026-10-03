@@ -17,24 +17,32 @@ import { toggleAccessory, ACCESSORY_MAP } from './render/ar/accessories.js';
 import { THROWABLES } from './render/fx/throwables.js';
 import { AudioEngine } from './audio/engine.js';
 import { uiSounds } from './audio/uiSounds.js';
-import { VOICE_MAP, voiceParams } from './audio/voices.js';
+import { VOICES, VOICE_MAP, voiceParams } from './audio/voices.js';
 import { SOUNDS } from './audio/sfx.js';
 import { Captions } from './audio/speech.js';
 import { EffectsEngine, EFFECTS } from './app/effects.js';
 import { applyLook, snapshot, allPersonas } from './app/personas.js';
-import { Recorder, download, stamp } from './app/recorder.js';
+import { Recorder, download, stamp, shareFile } from './app/recorder.js';
+import { host } from './app/host.js';
+import { LiveController, SERVICE_MAP, outputUrl } from './app/live.js';
+import { CallBridge } from './app/callBridge.js';
+import { openGuide } from './ui/guides.js';
+import qrcode from 'qrcode-generator';
 import { TwitchChat } from './integrations/twitch.js';
 import { loadModel } from './avatar/custom.js';
 import { AVATAR_LIST } from './avatar/avatarLayer.js';
 import { icon } from './ui/icons.js';
 import { TABS, panelFor, esc } from './ui/panels.js';
 import { bindAll } from './ui/bind.js';
-import { initTooltips, initTilt, initStageTilt, initUiSounds, toast, promptModal } from './ui/fx.js';
+import { initTooltips, initTilt, initStageTilt, initUiSounds, toast, promptModal, openModal } from './ui/fx.js';
 import { Logo3D } from './ui/logo3d.js';
 import { openHelp, startTour } from './ui/help.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+
+// Säg till samtalstillägget att den här sidan är Skepnad själv (dess egen kamera ska inte bytas ut)
+window.__SKEPNAD_APP__ = true;
 
 // ---------------------------------------------------------------- Tillstånd
 const store = createStore(DEFAULTS, { key: 'skepnad:v1' });
@@ -48,6 +56,9 @@ let compositor = null;
 let effects = null;
 let outStream = null;
 let brandLogo = null;
+const live = new LiveController();
+let callBridge = null;
+let ffProgress = null;
 const runtime = { mode: null, hasCamera: false, hasMic: false, fps: 0, clean: false, voiceOverride: null, started: false };
 
 window.skepnad = {
@@ -61,6 +72,11 @@ window.skepnad = {
   },
   audio,
   tracker,
+  host,
+  live,
+  get calls() {
+    return callBridge;
+  },
 };
 
 document.documentElement.dataset.reducedMotion = String(store.get('ui.reducedMotion'));
@@ -121,7 +137,8 @@ async function start(mode) {
 
   progress('Bygger 3D-motorn…', 0.28);
   compositor = new Compositor($('#out'), { tracker, video: devices.video });
-  compositor.setQuality(store.get('video.quality'));
+  compositor.setQuality(store.get('video.quality'), store.get('video.aspect'));
+  applyAspectCss();
   effects = new EffectsEngine({
     particles: compositor.particles,
     throwables: compositor.throwables,
@@ -135,6 +152,8 @@ async function start(mode) {
     shake: (a, dir) => compositor.shake(a, dir),
   });
   bus.on('fx:hit', ({ dir }) => compositor.avatar.rig.impulse(dir));
+  await host.detect();
+  callBridge = new CallBridge({ videoStream: () => window.skepnad.outputStream(), audioStream: () => audio.stream });
 
   if (runtime.hasCamera) {
     try {
@@ -161,7 +180,16 @@ async function start(mode) {
     splashLogo.dispose();
   }, 800);
   uiSounds.play('success');
-  requestAnimationFrame(loop);
+  requestAnimationFrame(rafLoop);
+  audio.onHeartbeat = () => {
+    const now = performance.now();
+    if (now - lastFrameAt > 45) frame(now);
+  };
+  setInterval(() => {
+    const now = performance.now();
+    if (now - lastFrameAt > 250) frame(now);
+  }, 250);
+  pushRemoteState();
   if (!store.get('ui.seenTour')) setTimeout(() => startTour(() => store.set('ui.seenTour', true)), 1100);
   else toast('Välkommen tillbaka! Tryck ? för hjälp.', 'ok');
 }
@@ -340,9 +368,12 @@ function wireState() {
   };
   store.subscribe('video.cameraId', restartCam);
   store.subscribe('video.quality', (q) => {
-    compositor.setQuality(q);
-    outStream = null;
+    compositor.setQuality(q, store.get('video.aspect'));
     restartCam();
+  });
+  store.subscribe('video.aspect', (a) => {
+    compositor.setQuality(store.get('video.quality'), a);
+    applyAspectCss();
   });
   store.subscribe('soundboard', (sb) => audio.setSfx(sb.volume, sb.toStream), { immediate: true });
   store.subscribe('ambience', applyAmbience, { immediate: true });
@@ -384,7 +415,253 @@ function wireState() {
   bus.on('toast', ({ text, kind }) => toast(text, kind));
   bus.on('twitch:message', ({ user, text }) => handleChat(user, text));
   bus.on('twitch:status', updateTwitchChip);
+  bus.on('calls:update', ({ active }) => {
+    if (['calls', 'home'].includes(currentTab)) rerenderPanel();
+    if (active) toast('📞 Skepnad används nu i ett samtal!', 'ok', 3500);
+  });
+  bus.on('ext:present', () => {
+    if (['calls', 'home'].includes(currentTab)) rerenderPanel();
+    if (store.get('ui.tab') === 'calls') toast('✅ Samtalstillägget är installerat – nu kan du ringa!', 'ok', 4000);
+  });
+  bus.on('live:update', onLiveUpdate);
+  bus.on('remote:cmd', onRemoteCmd);
+  bus.on('remote:count', (n) => {
+    const el = $('[data-remote-count]');
+    if (el) el.textContent = n ? `📱 ${n} mobil ansluten` : 'Ingen mobil ansluten ännu';
+    if (n) toast('📱 Mobilen är ansluten!', 'ok');
+    pushRemoteState();
+  });
+  store.subscribe('', schedulePushRemote);
 }
+
+function applyAspectCss() {
+  const portrait = store.get('video.aspect') === 'portrait';
+  document.documentElement.style.setProperty('--stage-ar', portrait ? '9 / 16' : '16 / 9');
+  document.documentElement.style.setProperty('--stage-arn', portrait ? '0.5625' : '1.7778');
+  document.body.classList.toggle('portrait', portrait);
+}
+
+function detectBrowser() {
+  return navigator.userAgentData?.brands?.some((b) => /Edge/i.test(b.brand)) || /Edg\//.test(navigator.userAgent) ? 'edge' : 'chrome';
+}
+
+async function openExternal(url) {
+  if (!url) return;
+  if (host.available) {
+    try {
+      await host.openUrl(url, detectBrowser());
+      return;
+    } catch {
+      /* faller tillbaka */
+    }
+  }
+  if (/^(chrome|edge):/.test(url)) toast(`Skriv ${url} i adressfältet.`, 'info', 5000);
+  else window.open(url, '_blank', 'noopener');
+}
+
+// ---------------------------------------------------------------- Mobilkontroll
+let pushTimer = null;
+function schedulePushRemote() {
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(pushRemoteState, 200);
+}
+
+function pushRemoteState() {
+  if (!host.available || !compositor) return;
+  const s = store.get();
+  const pick = (x) => ({ id: x.id, name: x.name, icon: x.icon });
+  host.pushState({
+    personas: allPersonas(s).map(pick),
+    effects: EFFECTS.map(pick),
+    sounds: [...SOUNDS, ...(s.soundboard.custom || []).map((c) => ({ ...c, icon: '🎵' }))].map(pick),
+    voices: VOICES.map(pick),
+    scenes: SCENES.map(pick),
+    avatars: AVATAR_LIST.filter((a) => a.id !== 'custom' || compositor.avatar.custom).map(pick),
+    active: {
+      persona: s.personas.active,
+      voice: s.voice.preset,
+      scene: s.background.type === 'scene' ? s.background.scene : null,
+      avatar: s.video.mode === 'avatar' ? s.avatar.id : null,
+      mode: s.video.mode,
+      muted: s.voice.muted,
+      recording: recorder.active,
+      live: live.state === 'live',
+    },
+  });
+}
+
+const REMOTE_ACTIONS = new Set(['persona', 'effect', 'sfx', 'voice', 'scene', 'avatar', 'toggleMute', 'record', 'screenshot', 'toggleMode', 'throw']);
+function onRemoteCmd({ action, arg }) {
+  if (!REMOTE_ACTIONS.has(action)) return;
+  if (action === 'avatar' && arg === 'custom' && !compositor.avatar.custom) return;
+  actions[action]?.(arg);
+  schedulePushRemote();
+}
+
+// ---------------------------------------------------------------- Livesändning
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function startLive() {
+  if (!host.available) return toast('Livesändning kräver Skepnad-motorn – starta Skepnad via ikonen.', 'error', 5000);
+  const s = store.get();
+  const targets = Object.entries(s.live.services)
+    .filter(([, c]) => c.enabled)
+    .map(([id, c]) => ({ id, name: SERVICE_MAP[id].name, url: outputUrl(SERVICE_MAP[id], c) }));
+  if (!targets.length) return toast('Slå på minst en tjänst nedan och klistra in streamnyckeln.', 'error', 4500);
+  const bad = targets.find((t) => !t.url);
+  if (bad) return toast(`Fyll i ${SERVICE_MAP[bad.id].editableUrl ? 'serveradress och ' : ''}streamnyckel för ${bad.name}.`, 'error', 4500);
+  let info = await host.refresh();
+  if (info.ffmpeg.state !== 'ready') {
+    await host.installFfmpeg();
+    ffProgress = 0;
+    live._set('preparing', { text: 'Laddar ner sändningsmotorn…' });
+    for (;;) {
+      await sleep(600);
+      info = await host.refresh();
+      ffProgress = info.ffmpeg.progress;
+      const fill = $('.live-card .fill');
+      if (fill) fill.style.width = `${Math.round(ffProgress * 100)}%`;
+      if (info.ffmpeg.state === 'ready') break;
+      if (info.ffmpeg.state === 'error') {
+        ffProgress = null;
+        live._set('error', { error: `Kunde inte ladda ner sändningsmotorn: ${info.ffmpeg.error}` });
+        return;
+      }
+    }
+    ffProgress = null;
+  }
+  const q = s.live.quality;
+  const px = compositor.width * compositor.height;
+  const kbps = q === '1080' ? 6000 : q === '720' ? 3500 : px > 1.5e6 ? 6000 : 3500;
+  live.start({ host, videoStream: window.skepnad.outputStream(), audioStream: audio.stream, targets, saveCopy: s.live.saveCopy, kbps });
+}
+
+let lastLiveState = 'idle';
+function onLiveUpdate(L) {
+  if (L.state !== lastLiveState) {
+    if (L.state === 'live') {
+      uiSounds.play('recStart');
+      toast(`🔴 Du är live på ${L.targets.map((t) => t.name).join(' + ')}!`, 'ok', 4000);
+    }
+    if (L.state === 'error') toast(L.error || 'Sändningen stoppades.', 'error', 6000);
+    if (L.state === 'idle' && lastLiveState === 'live') {
+      uiSounds.play('recStop');
+      toast(L.recordPath ? 'Sändningen är avslutad – en kopia finns i Mina klipp.' : 'Sändningen är avslutad.', 'ok', 4000);
+    }
+    lastLiveState = L.state;
+    if (currentTab === 'live' || currentTab === 'home') rerenderPanel();
+    pushRemoteState();
+  }
+  if (L.warn && currentTab === 'live') {
+    const el = $('[data-live-stats]');
+    if (el) el.textContent = L.warn;
+  }
+}
+
+// ---------------------------------------------------------------- Klipp
+const clipUrl = (name) => `/clips/${encodeURIComponent(name)}`;
+let memClips = []; // klipp utan motorn (nedladdade), för delning i samma session
+
+async function clipBlob(name) {
+  const mem = memClips.find((c) => c.name === name);
+  if (mem) return mem.blob;
+  return (await fetch(clipUrl(name))).blob();
+}
+
+const clipOps = {
+  async share(name) {
+    try {
+      const ok = await shareFile(await clipBlob(name), name);
+      if (!ok) throw new Error('nosupport');
+    } catch (err) {
+      if (err?.name === 'AbortError') return;
+      if (host.available && !memClips.some((c) => c.name === name)) {
+        await host.copyToClipboard(name);
+        toast('Klippet är kopierat – klistra in med Ctrl+V i chatten!', 'ok', 4500);
+      } else toast('Delning stöds inte här.', 'error');
+    }
+  },
+  async copy(name) {
+    try {
+      await host.copyToClipboard(name);
+      toast('Kopierat! Klistra in med Ctrl+V i Messenger, Discord eller mejl.', 'ok', 4500);
+    } catch {
+      toast('Kunde inte kopiera klippet.', 'error');
+    }
+  },
+  async youtube(name) {
+    await openExternal('https://www.youtube.com/upload');
+    if (host.available && name) await host.reveal(name).catch(() => {});
+    toast('YouTube öppnas – dra klippet från mappen in i YouTube-fönstret.', 'ok', 7000);
+  },
+  async reveal(name) {
+    if (host.available) await host.reveal(name);
+  },
+  async remove(name) {
+    const ok = await promptModal({ title: 'Ta bort klippet?', label: `Skriv JA för att radera "${name}".`, okText: 'Ta bort' });
+    if (ok?.toUpperCase() !== 'JA') return;
+    await host.deleteClip(name);
+    toast('Klippet är borttaget.', 'ok');
+    refreshClips();
+  },
+  play(name) {
+    const mem = memClips.find((c) => c.name === name);
+    const src = mem ? mem.url : clipUrl(name);
+    const isImg = /\.(png|jpg)$/i.test(name);
+    openModal({ title: name, iconName: 'play-circle', content: isImg ? `<img src="${src}" style="width:100%;border-radius:14px">` : `<video src="${src}" controls autoplay style="width:100%;max-height:60vh;border-radius:14px;background:#000"></video>` });
+  },
+};
+
+function fmtBytes(b) {
+  return b > 1e9 ? `${(b / 1e9).toFixed(1)} GB` : b > 1e6 ? `${(b / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1e3))} kB`;
+}
+
+async function refreshClips() {
+  const list = $('#clip-list');
+  if (!list) return;
+  let clips = memClips.map((c) => ({ name: c.name, size: c.blob.size, mtime: c.mtime, kind: 'video', url: c.url }));
+  if (host.available) {
+    try {
+      clips = (await host.clips()).clips.map((c) => ({ ...c, url: clipUrl(c.name) }));
+    } catch {
+      /* ok */
+    }
+  }
+  if (!clips.length) {
+    list.innerHTML = '<p class="muted">Inga klipp ännu. Tryck <b>Spela in</b> ovan!</p>';
+    return;
+  }
+  const a = (op, name, ic, label, tip, cls = '') => `<button class="btn sm ${cls}" data-action="clip" data-arg="${op}|${esc(name)}" data-tip="${tip}">${icon(ic, 14)}${label ? `<span>${label}</span>` : ''}</button>`;
+  list.innerHTML = clips
+    .slice(0, 60)
+    .map(
+      (c) => `<div class="clip">
+        <button class="clip-thumb" data-action="clip" data-arg="play|${esc(c.name)}" data-tip="Spela|Titta på klippet.">${c.kind === 'image' ? `<img src="${c.url}" loading="lazy" alt="">` : `<video src="${c.url}#t=0.5" preload="metadata" muted></video>`}<span class="clip-play">${icon('play', 18)}</span></button>
+        <div class="clip-meta"><b title="${esc(c.name)}">${esc(c.name)}</b><small>${new Date(c.mtime).toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' })} · ${fmtBytes(c.size)}</small>
+          <div class="clip-actions">${a('share', c.name, 'share', 'Dela', 'Dela|Skicka via Windows delningsmeny (t.ex. till mobilen, mejl eller appar).', 'btn-primary')}${host.available ? a('copy', c.name, 'clip-copy', 'Kopiera', 'Kopiera|Kopiera filen – klistra sedan in med Ctrl+V i Messenger, Discord eller mejl.') : ''}${c.kind === 'video' ? a('youtube', c.name, 'upload', 'YouTube', 'YouTube|Öppnar YouTubes uppladdning och visar filen i mappen.') : ''}${host.available ? a('reveal', c.name, 'folder', '', 'Visa i mappen|Öppna Utforskaren vid filen.') : ''}${host.available ? a('remove', c.name, 'trash', '', 'Ta bort|Radera klippet.') : ''}</div>
+        </div>
+      </div>`,
+    )
+    .join('');
+}
+
+function showClipDone(name, duration) {
+  const src = memClips.find((c) => c.name === name)?.url ?? clipUrl(name);
+  const secs = Math.round(duration || 0);
+  openModal({
+    title: '🎉 Klippet är klart!',
+    iconName: 'clapper',
+    content: `<video src="${src}" controls autoplay muted style="width:100%;max-height:46vh;border-radius:14px;background:#000"></video>
+      <p style="margin:10px 0 14px">${esc(name)} · ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')} ${host.available ? '· sparat i <b>Mina klipp</b>' : '· nedladdat till <b>Hämtade filer</b>'}</p>
+      <div class="row" style="flex-wrap:wrap;gap:8px">
+        <button class="btn btn-primary" data-action="clip" data-arg="share|${esc(name)}" data-close>${icon('share', 16)}<span>Dela</span></button>
+        ${host.available ? `<button class="btn" data-action="clip" data-arg="copy|${esc(name)}" data-close>${icon('clip-copy', 16)}<span>Kopiera till chatten</span></button>` : ''}
+        <button class="btn" data-action="clip" data-arg="youtube|${esc(name)}" data-close>${icon('upload', 16)}<span>Lägg upp på YouTube</span></button>
+        ${host.available ? `<button class="btn" data-action="clip" data-arg="reveal|${esc(name)}" data-close>${icon('folder', 16)}<span>Visa i mappen</span></button>` : ''}
+      </div>`,
+  });
+}
+
 
 // ---------------------------------------------------------------- Skepnader
 function applyPersona(id) {
@@ -452,30 +729,49 @@ function pickFile(accept, cb) {
 
 async function toggleRecord() {
   if (recorder.active) {
-    const blob = await recorder.stop();
+    const res = await recorder.stop();
     uiSounds.play('recStop');
-    if (blob) {
-      download(blob, `skepnad-${stamp()}.webm`);
-      toast('Inspelningen sparades i Hämtade filer.', 'ok', 3200);
+    updateRecordUi();
+    if (res?.saved) showClipDone(res.saved.name, res.duration);
+    else if (res?.blob) {
+      const name = `Skepnad ${stamp()}.${res.ext}`;
+      memClips.unshift({ name, blob: res.blob, url: URL.createObjectURL(res.blob), mtime: Date.now() });
+      download(res.blob, name);
+      showClipDone(name, res.duration);
     }
+    if (currentTab === 'clips') rerenderPanel();
   } else {
     try {
-      recorder.start(window.skepnad.outputStream(), audio.stream);
+      await recorder.start(window.skepnad.outputStream(), audio.stream, { host, baseName: `Skepnad ${stamp()}`, pixels: compositor.width * compositor.height });
       uiSounds.play('recStart');
       toast('Inspelning startad – tryck R för att stoppa.');
     } catch (err) {
       console.error(err);
       toast('Kunde inte starta inspelningen.', 'error');
     }
+    updateRecordUi();
+    if (currentTab === 'clips') rerenderPanel();
   }
-  updateRecordUi();
+  pushRemoteState();
 }
 
 async function screenshot() {
   const blob = await compositor.screenshot();
   compositor.flash('#ffffff', 0.6);
   uiSounds.play('shutter');
-  if (blob) download(blob, `skepnad-${stamp()}.png`);
+  if (!blob) return;
+  const name = `Skepnad ${stamp()}.png`;
+  if (host.available) {
+    try {
+      await host.saveBlob(name, blob);
+      toast('Bilden sparades i Mina klipp!', 'ok');
+      if (currentTab === 'clips') refreshClips();
+      return;
+    } catch {
+      /* faller tillbaka */
+    }
+  }
+  download(blob, name);
   toast('Skärmdump sparad!', 'ok');
 }
 
@@ -527,6 +823,40 @@ const actions = {
   toggleMute: () => store.set('voice.muted', !store.get('voice.muted')),
   toggleUiSound: () => store.set('ui.sounds', !store.get('ui.sounds')),
   tab: (id) => showTab(id),
+  guide: (id) => openGuide(id, { showTab, record: toggleRecord, store, recording: () => recorder.active }),
+  clip: (arg) => {
+    const i = arg.indexOf('|');
+    clipOps[arg.slice(0, i)]?.(arg.slice(i + 1));
+  },
+  openClipsFolder: () => (host.available ? host.openFolder('videos') : toast('Klippen finns i Hämtade filer.')),
+  refreshClips: () => refreshClips(),
+  liveStart: () => startLive(),
+  liveStop: () => live.stop(),
+  openKeyPage: (id) => openExternal(SERVICE_MAP[id]?.keyUrl),
+  extOpenFolder: async () => {
+    if (!host.available) return toast('Starta Skepnad via ikonen för att öppna mappen.', 'error');
+    const r = await host.openFolder('extension');
+    await navigator.clipboard.writeText(r.path).catch(() => {});
+    toast('Mappen är öppnad och sökvägen kopierad.', 'ok', 3500);
+  },
+  extOpenPage: () => openExternal(detectBrowser() === 'edge' ? 'edge://extensions' : 'chrome://extensions'),
+  openCallSite: (id) => openExternal({ messenger: 'https://www.messenger.com/', meet: 'https://meet.google.com/', discord: 'https://discord.com/app' }[id]),
+  remoteStart: async () => {
+    if (!host.available) return;
+    try {
+      await host.startRemote();
+      await host.refresh();
+      rerenderPanel();
+      pushRemoteState();
+    } catch (err) {
+      toast(`Kunde inte starta mobilkontrollen: ${err.message}`, 'error');
+    }
+  },
+  remoteStop: async () => {
+    await host.stopRemote();
+    await host.refresh();
+    rerenderPanel();
+  },
   savePersona: async () => {
     const name = await promptModal({ title: 'Spara skepnad', label: 'Vad ska skepnaden heta?', placeholder: 't.ex. Kvällsstream', value: '' });
     if (!name) return;
@@ -685,7 +1015,7 @@ function buildShell() {
     <button class="btn icon-only" data-action="toggleUiSound" data-ui-sound data-tip="Gränssnittsljud|Slå av eller på klick- och hovringsljud (hörs bara för dig).">${icon('volume')}</button>
     <button class="btn icon-only" data-action="help" data-tip="Hjälp|Kom igång, streaming-guide och snabbtangenter." data-key="?">${icon('help')}</button>`;
 
-  $('#rail').innerHTML = TABS.map((t, i) => `${i === TABS.length - 1 ? '<div class="spacer"></div>' : ''}<button data-action="tab" data-arg="${t.id}" data-tab-id="${t.id}" data-tip="${esc(t.tip)}" aria-label="${t.label}">${icon(t.icon, 22)}<span>${t.label}</span></button>`).join('');
+  $('#rail').innerHTML = TABS.map((t, i) => `${i === TABS.length - 1 ? '<div class="spacer"></div>' : ''}${t.id === 'personas' || t.id === 'clips' ? '<div class="rail-sep"></div>' : ''}<button data-action="tab" data-arg="${t.id}" data-tab-id="${t.id}" data-tip="${esc(t.tip)}" aria-label="${t.label}">${icon(t.icon, 22)}<span>${t.label}</span></button>`).join('');
 
   const quickFx = [
     ['confetti', '🎊', 'C'],
@@ -782,6 +1112,10 @@ function rerenderPanel() {
   if (currentTab) renderPanel();
 }
 
+function panelCtx() {
+  return { host, calls: callBridge, live, runtime, browser: detectBrowser(), recording: recorder.active, ffProgress };
+}
+
 function renderPanel() {
   unbindPanel?.();
   panelCleanup?.();
@@ -796,7 +1130,7 @@ function renderPanel() {
   $('#panel-title').innerHTML = `${icon(tab.icon, 22)}<span>${p.title}</span>`;
   $('#panel-sub').textContent = p.sub;
   const body = $('#panel-body');
-  body.innerHTML = p.render(store.get());
+  body.innerHTML = p.render(store.get(), panelCtx());
   body.classList.remove('swap');
   void body.offsetWidth;
   body.classList.add('swap');
@@ -871,13 +1205,34 @@ function mountPanel(id, body) {
       }
     });
   }
-  if (id === 'stream') {
-    devices.list().then((d) => {
-      fillSelect($('select[data-bind="voice.outputDevice"]', body), d.outputs, store.get('voice.outputDevice'));
-      fillSelect($('select[data-bind="video.cameraId"]', body), d.cameras, store.get('video.cameraId'));
-    });
+  if (id === 'calls') {
+    devices.list().then((d) => fillSelect($('select[data-bind="voice.outputDevice"]', body), d.outputs, store.get('voice.outputDevice')));
+  }
+  if (id === 'live') {
     updateTwitchChip();
-    updateRecordUi();
+    every(500, () => {
+      const t = $('[data-live-time]', body);
+      if (t) t.textContent = fmtTime(live.elapsed);
+      const st = $('[data-live-stats]', body);
+      if (st && live.stats && !live.warn) st.textContent = `${Math.round(live.stats.fps)} bilder/s · ${live.stats.kbps ? `${Math.round(live.stats.kbps)} kbit/s · ` : ''}${live.stats.encoder === 'x264' ? 'processor' : 'grafikkort'}`;
+    });
+  }
+  if (id === 'clips') {
+    refreshClips();
+    every(500, () => {
+      const t = $('[data-rec-time]', body);
+      if (t) t.textContent = fmtTime(recorder.elapsed);
+    });
+  }
+  if (id === 'phone') {
+    const box = $('#remote-qr', body);
+    const url = host.info?.remote?.urls?.[0];
+    if (box && url) {
+      const qr = qrcode(0, 'M');
+      qr.addData(url);
+      qr.make();
+      box.innerHTML = qr.createSvgTag({ cellSize: 6, margin: 2, scalable: true });
+    }
   }
   if (id === 'avatar') {
     const nameEl = $('#custom-model-name', body);
@@ -889,6 +1244,7 @@ function mountPanel(id, body) {
     cleanups.push(store.subscribe('avatar.id', () => setTimeout(rerenderPanel, 0)));
   }
   if (id === 'settings') {
+    devices.list().then((d) => fillSelect($('select[data-bind="video.cameraId"]', body), d.cameras, store.get('video.cameraId')));
     every(500, () => {
       const el = $('[data-perf]', body);
       if (el) el.textContent = `${runtime.fps} fps · Spårning ${tracker.stats.faceMs.toFixed(1)} ms · Urklipp ${tracker.stats.segMs.toFixed(1)} ms · ${compositor.width}×${compositor.height}`;
@@ -912,9 +1268,19 @@ let fpsFrames = 0;
 let fpsTime = 0;
 let uiTime = 0;
 let hintTimer = 0;
+let lastFrameAt = 0;
 
-function loop(now) {
-  requestAnimationFrame(loop);
+function rafLoop(now) {
+  requestAnimationFrame(rafLoop);
+  frame(now);
+}
+
+// Kallas av rAF – eller av ljudtrådens hjärtslag när fönstret är dolt/täckt,
+// så att samtal, livesändning och inspelning fortsätter i bakgrunden.
+function frame(now) {
+  if (now - lastFrameAt < 12) return;
+  lastFrameAt = now;
+  if (document.hidden && compositor.videoTex) compositor.videoTex.needsUpdate = true;
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
   const t = now / 1000;
@@ -977,7 +1343,13 @@ function updateStatus(s, hasVideo) {
   setChip('face', tracker.face.present ? 'ok' : hasVideo ? 'warn' : '', tracker.face.present ? 'Ansikte hittat' : hasVideo ? 'Söker ansikte…' : 'Spårning av');
   setChip('fps', runtime.fps >= 28 ? 'ok' : runtime.fps >= 18 ? 'warn' : 'bad', `${runtime.fps} fps`);
   const badges = $('#stage-badges');
-  const want = recorder.active ? `<span class="badge rec"><span class="dot"></span>REC ${fmtTime(recorder.elapsed)}</span>` : '';
+  const calls = callBridge?.activeCalls || 0;
+  const want = [
+    live.state === 'live' ? `<span class="badge rec"><span class="dot"></span>LIVE ${fmtTime(live.elapsed)}</span>` : '',
+    recorder.active ? `<span class="badge rec"><span class="dot"></span>REC ${fmtTime(recorder.elapsed)}</span>` : '',
+    calls ? `<span class="badge">📞 I samtal${calls > 1 ? ` (${calls})` : ''}</span>` : '',
+    host.remoteCount ? '<span class="badge">📱 Mobil</span>' : '',
+  ].join('');
   if (badges.innerHTML !== want) badges.innerHTML = want;
 }
 

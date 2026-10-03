@@ -83,7 +83,7 @@ export function bindAll(root, store, { onUserChange } = {}) {
     });
   });
 
-  root.querySelectorAll('select[data-bind], input[type=text][data-bind], input[type=color][data-bind]').forEach((el) => {
+  root.querySelectorAll('select[data-bind], input[type=text][data-bind], input[type=password][data-bind], input[type=color][data-bind]').forEach((el) => {
     const path = el.dataset.bind;
     sub(path, (v) => {
       if (document.activeElement !== el || el.tagName === 'SELECT') el.value = serialize(el, v);

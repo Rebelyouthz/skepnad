@@ -8,6 +8,8 @@ import {
   Wand, Download, Gauge, Shuffle, Plus, CircleDot, Rocket, Gamepad2, Crown, Cpu, Activity, Ghost, ChevronRight,
   ChevronLeft, Captions, Frame, ScanEye, Wifi, WifiOff, Theater, Send, Signal, ImagePlus, Box, Sun, Contrast, Droplets,
   Thermometer, Crosshair, MousePointerClick, BookOpen,
+  House, Phone, PhoneCall, PhoneOff, Smartphone, QrCode, Share2, CirclePlay, FolderOpen, ClipboardCopy, Copy, Link, KeyRound,
+  Clapperboard, Puzzle, MonitorPlay, RectangleHorizontal, RectangleVertical, LoaderCircle, CircleCheck, TriangleAlert, Globe, ArrowRight,
 } from 'lucide';
 
 const ICONS = {
@@ -23,6 +25,9 @@ const ICONS = {
   'scan-eye': ScanEye, wifi: Wifi, 'wifi-off': WifiOff, theater: Theater, send: Send, signal: Signal, 'image-plus': ImagePlus,
   box: Box, sun: Sun, contrast: Contrast, droplets: Droplets, thermometer: Thermometer, crosshair: Crosshair,
   pointer: MousePointerClick, book: BookOpen,
+  home: House, phone: Phone, call: PhoneCall, 'phone-off': PhoneOff, smartphone: Smartphone, qr: QrCode, share: Share2, 'play-circle': CirclePlay,
+  folder: FolderOpen, 'clip-copy': ClipboardCopy, copy: Copy, link: Link, key: KeyRound, clapper: Clapperboard, puzzle: Puzzle, live: MonitorPlay,
+  landscape: RectangleHorizontal, portrait: RectangleVertical, loader: LoaderCircle, ok: CircleCheck, alert: TriangleAlert, globe: Globe, arrow: ArrowRight,
 };
 
 const cache = new Map();

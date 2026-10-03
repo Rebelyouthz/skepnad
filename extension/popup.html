@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="sv">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body { margin: 0; width: 300px; font: 13px 'Segoe UI', system-ui, sans-serif; color: #f3f1ff; background: linear-gradient(160deg, #1a1333, #0b0916); }
+      .wrap { padding: 16px; }
+      h1 { margin: 0 0 4px; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+      h1 img { width: 26px; height: 26px; border-radius: 7px; }
+      p { margin: 6px 0 12px; color: #a8a3c7; line-height: 1.45; }
+      .status { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); font-weight: 600; }
+      .dot { width: 9px; height: 9px; border-radius: 50%; background: #ff2d55; box-shadow: 0 0 10px #ff2d55; }
+      .ok .dot { background: #3ddc97; box-shadow: 0 0 10px #3ddc97; }
+      label { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08); cursor: pointer; }
+      label small { display: block; color: #a8a3c7; font-weight: 400; }
+      input { width: 18px; height: 18px; accent-color: #7c5cff; }
+      a { display: block; margin-top: 12px; text-align: center; padding: 10px; border-radius: 12px; background: linear-gradient(135deg, #7c5cff, #22d3ee); color: #fff; font-weight: 700; text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1><img src="icons/48.png" alt="" />Skepnad Kamera</h1>
+      <div class="status" id="status"><span class="dot"></span><span id="st">Kollar…</span></div>
+      <p>När Skepnad är igång får samtal i webbläsaren (Messenger, Meet, Discord, Zoom, Teams, YouTube Live) din avatar och röst.</p>
+      <label><span>Använd Skepnad automatiskt<small>Alla samtal får Skepnad-bilden</small></span><input type="checkbox" id="auto" /></label>
+      <label><span>Använd Skepnad-rösten<small>Din förvrängda röst i samtalet</small></span><input type="checkbox" id="voice" /></label>
+      <a href="http://localhost:5174/" target="_blank">Öppna Skepnad</a>
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>

@@ -51,7 +51,7 @@ export class Overlay {
     this.canvas.height = h;
     this.W = w;
     this.H = h;
-    this.s = h / 720;
+    this.s = Math.min(w, h) / 720;
   }
 
   /** Serietidningstext. at = {x, y} i pixlar med y upp. */

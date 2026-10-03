@@ -38,6 +38,7 @@ export const DEFAULTS = {
     quality: 'balanced', // 'high' | 'balanced' | 'fast'
     autoFrame: false,
     autoFrameZoom: 1.35,
+    aspect: 'landscape', // 'landscape' (16:9) | 'portrait' (9:16)
     cameraId: '',
     feather: 0.5,
   },
@@ -117,11 +118,23 @@ export const DEFAULTS = {
     chatAlerts: true,
   },
   twitch: { channel: '', enabled: false, cooldown: 8, allowVoice: true },
+  live: {
+    saveCopy: true,
+    quality: 'auto', // 'auto' | '720' | '1080'
+    services: {
+      youtube: { enabled: false, key: '', url: '' },
+      twitch: { enabled: false, key: '', url: '' },
+      kick: { enabled: false, key: '', url: '' },
+      tiktok: { enabled: false, key: '', url: '' },
+      facebook: { enabled: false, key: '', url: '' },
+      custom: { enabled: false, key: '', url: '' },
+    },
+  },
   personas: { active: 'cozy', custom: [] },
   ui: {
     sounds: true,
     soundVolume: 0.55,
-    tab: 'personas',
+    tab: 'home',
     tooltips: true,
     seenTour: false,
     reducedMotion: false,

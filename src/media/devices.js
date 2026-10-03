@@ -79,7 +79,7 @@ export class Devices {
     const all = await navigator.mediaDevices.enumerateDevices().catch(() => []);
     const pick = (kind) =>
       all
-        .filter((d) => d.kind === kind && d.deviceId)
+        .filter((d) => d.kind === kind && d.deviceId && !String(d.deviceId).startsWith('skepnad-'))
         .map((d, i) => ({ id: d.deviceId, label: d.label || `${kind} ${i + 1}` }));
     return { cameras: pick('videoinput'), mics: pick('audioinput'), outputs: pick('audiooutput') };
   }
