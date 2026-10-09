@@ -890,6 +890,9 @@ function applyPersona(id) {
  * Returnerar { look, sticker } där sticker är ett klistermärke att sätta ovanför huvudet.
  */
 function pickRandomLook() {
+  // TODO(human): bestäm blandningen för "Överraska mig" – hur ofta ska det bli en
+  // 3D-figur (anka, kung, drake…) och hur ofta "du själv" med hatt/glasögon?
+  // Just nu: 55 % figur. Utan kamera blir det alltid figur.
   const useAvatar = !runtime.hasCamera || Math.random() < 0.55;
   const figures = AVATAR_LIST.filter((a) => !['png', 'custom'].includes(a.id));
   const hats = ACCESSORIES.filter((a) => ['head', 'helmet'].includes(a.slot));
