@@ -397,6 +397,14 @@ kbd {
 .card:active { transform: perspective(700px) rotateX(var(--rx)) rotateY(var(--ry)) scale(0.97); }
 .card .emoji { font-size: 30px; line-height: 1.1; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55)); transform: translateZ(28px); transition: transform 0.4s var(--spring); }
 .card .emoji img { width: 34px; height: 34px; display: block; }
+.grid.faces { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
+.card.face { padding: 6px 6px 9px; }
+.card.face .emoji { width: 100%; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.5)); }
+.card.face .emoji img { width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; clip-path: var(--cut); }
+.card.face:hover .emoji { transform: translateZ(30px) scale(1.04); }
+.card.face .name, .card.face .desc { padding: 0 4px; }
+#m-carousel button img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; pointer-events: none; }
+.p-card .e img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; display: block; pointer-events: none; }
 .card:hover .emoji { transform: translateZ(40px) scale(1.12) rotate(-6deg); }
 .card .name { font-family: var(--display); font-weight: 700; font-size: 12.5px; transform: translateZ(16px); letter-spacing: 0.01em; }
 .card .desc { font-size: 11px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; transform: translateZ(8px); }

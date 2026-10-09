@@ -41,6 +41,7 @@ import { icon } from './ui/icons.js';
 import { emblemSvg, wordmarkHtml } from './ui/brand.js';
 import { SKEP_EMOJIS, EMOJI_SETS } from './ui/emojis.js';
 import { TABS, MOBILE_TOOLS, panelFor, esc } from './ui/panels.js';
+import { FACE_MAP, MAKEUP_PRESETS, faceDef, faceImage } from './app/faces.js';
 import { bindAll } from './ui/bind.js';
 import { initStickerUi } from './ui/stickerUi.js';
 import { countdown, cancelCountdown, countdownRunning } from './ui/countdown.js';
@@ -238,6 +239,17 @@ async function start(mode) {
   await restoreAssets();
   progress('Förbereder shaders…', 0.94);
   wireState();
+  // AI-ansiktet är huvudläget: första gången med kamera blir du "Kungen" (påhittad person)
+  if (runtime.hasCamera && !store.get('ui.aiFaceIntro')) {
+    store.set('ui.aiFaceIntro', true);
+    const intro = BUILTIN_PERSONAS.find((p) => p.id === 'ai-kungen');
+    if (intro) {
+      applyLook(store, intro.look);
+      store.set('personas.active', intro.id);
+      store.set('ui.personaCat', 'real');
+      store.set('ui.dockCat', 'real');
+    }
+  }
   buildShell();
   compositor.precompile();
   progress('Klart!', 1);
@@ -493,6 +505,11 @@ function wireState() {
     updateAmbientColor();
   }, { immediate: true });
   store.subscribe('face.accessories', (ids) => compositor.ar.setAccessories(ids), { immediate: true });
+  store.subscribe('face.swap', async (id) => {
+    const def = await faceDef(id);
+    if (id && id !== 'none' && !def) toast('AI-ansiktet kunde inte laddas – kontrollera nätet.', 'error', 3500);
+    await compositor.swap.load(def).catch((err) => console.warn('[ai-ansikte]', err));
+  }, { immediate: true });
   store.subscribe('avatar.id', () => applyAvatar(), { immediate: true });
   store.subscribe('avatar.colors', () => {
     clearTimeout(colorTimer);
@@ -1188,6 +1205,30 @@ function setWarpSet(list) {
 // ---------------------------------------------------------------- Actions
 const actions = {
   persona: (id) => applyPersona(id),
+  swapFace: (id) => {
+    store.set('face.swap', id);
+    if (id === 'none') return;
+    if (!runtime.hasCamera) return toast('AI-ansiktet behöver kameran – starta om med kamera för att se det.', 'info', 3800);
+    store.set('video.mode', 'camera');
+    uiSounds.play('pop');
+    const name = FACE_MAP[id]?.name;
+    if (name) toast(`🎭 ${name}`, 'ok', 1400);
+  },
+  makeupPreset: (id) => {
+    const p = MAKEUP_PRESETS.find((x) => x.id === id);
+    if (!p) return;
+    store.set('face.makeup', { ...store.get('face.makeup'), ...p.makeup });
+    rerenderPanel();
+  },
+  cameraMode: () => {
+    if (!runtime.hasCamera) return toast('Ingen kamera är igång – starta om med kamera.', 'info', 3500);
+    store.set('video.mode', 'camera');
+    rerenderPanel();
+  },
+  realBg: (type) => {
+    if (type === 'blur' && !runtime.hasCamera) return toast('Suddigt rum kräver kameran.', 'info', 3000);
+    store.set('background.type', type);
+  },
   personaCat: (id) => {
     store.set('ui.personaCat', id);
     rerenderPanel();
@@ -1629,7 +1670,7 @@ function buildShell() {
   });
   store.subscribe('voice', updateVoiceChip, { immediate: true });
   store.subscribe('ui.sounds', (on) => ($('[data-ui-sound]').innerHTML = icon(on ? 'volume' : 'mute')), { immediate: true });
-  showTab(runtime.mobile ? 'personas' : store.get('ui.tab') || 'home', { open: false });
+  showTab(runtime.mobile ? 'aiface' : store.get('ui.tab') || 'home', { open: false });
   refreshClips();
 }
 
@@ -1649,7 +1690,7 @@ function renderDock() {
   const dock = $('#dock');
   if (!dock) return;
   const s = store.get();
-  const cat = s.ui.dockCat || 'cartoon';
+  const cat = s.ui.dockCat || 'real';
   const groups = [...PERSONA_GROUPS, ...(s.personas.custom?.length ? [{ id: 'own', name: 'Mina', icon: '⭐' }] : [])];
   $('#dock-cats').innerHTML = groups.map((g) => `<button class="chipbtn ${g.id === cat ? 'active' : ''}" data-action="dockCat" data-arg="${g.id}"><span>${g.icon}</span><span>${esc(g.name)}</span></button>`).join('') + `<button class="chipbtn" data-action="random" data-tip="Överraska mig|Slumpa en helt ny look.">🎲 <span>Slumpa</span></button>`;
   const all = allPersonas(s);
@@ -1658,7 +1699,7 @@ function renderDock() {
     list
       .map((p) => {
         const i = all.indexOf(p);
-        return `<button class="p-card card-lite ${s.personas.active === p.id ? 'active' : ''}" data-action="persona" data-arg="${esc(p.id)}" data-tip="${esc(p.name)}|${esc(p.desc || 'Din egen skepnad.')}"${i < 9 ? ` data-key="Shift+${i + 1}"` : ''}><span class="e">${p.icon}</span><span class="n">${esc(p.name)}</span>${i < 9 ? `<kbd>⇧${i + 1}</kbd>` : ''}</button>`;
+        return `<button class="p-card card-lite ${s.personas.active === p.id ? 'active' : ''}" data-action="persona" data-arg="${esc(p.id)}" data-tip="${esc(p.name)}|${esc(p.desc || 'Din egen skepnad.')}"${i < 9 ? ` data-key="Shift+${i + 1}"` : ''}><span class="e">${personaIcon(p)}</span><span class="n">${esc(p.name)}</span>${i < 9 ? `<kbd>⇧${i + 1}</kbd>` : ''}</button>`;
       })
       .join('') + `<button class="p-card add" data-action="savePersona" data-tip="Spara skepnad|Spara din nuvarande look så att du kan byta tillbaka med ett klick.">${icon('plus', 22)}</button>`;
 }
@@ -1698,13 +1739,17 @@ function renderMobile() {
   updateGalleryButton();
 }
 
+/** Skepnadens AI-ansikte (id) om den har ett. */
+const personaFace = (p) => (p.look?.video?.mode === 'camera' && p.look?.face?.swap && p.look.face.swap !== 'none' ? p.look.face.swap : null);
+const personaIcon = (p) => (personaFace(p) ? `<img src="${faceImage(personaFace(p))}" alt="" loading="lazy" draggable="false">` : p.icon);
+
 let carouselLock = 0;
 function renderCarousel() {
   const el = $('#m-carousel');
   if (!el) return;
   const s = store.get();
   el.innerHTML = allPersonas(s)
-    .map((p) => `<button data-action="persona" data-arg="${esc(p.id)}" data-pid="${esc(p.id)}" class="${s.personas.active === p.id ? 'active' : ''}" aria-label="${esc(p.name)}">${p.icon}</button>`)
+    .map((p) => `<button data-action="persona" data-arg="${esc(p.id)}" data-pid="${esc(p.id)}" class="${s.personas.active === p.id ? 'active' : ''}${personaFace(p) ? ' face' : ''}" aria-label="${esc(p.name)}">${personaIcon(p)}</button>`)
     .join('');
   if (!el.dataset.wired) {
     el.dataset.wired = '1';

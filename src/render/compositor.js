@@ -14,6 +14,8 @@ import { Particles } from './fx/particles.js';
 import { Throwables } from './fx/throwables.js';
 import { Overlay } from './overlay.js';
 import { AvatarLayer } from '../avatar/avatarLayer.js';
+import { FaceSwapLayer } from './faceSwap/faceSwap.js';
+import { MakeupLayer } from './faceSwap/makeup.js';
 import { LM } from '../media/tracker.js';
 
 export const QUALITY = {
@@ -48,6 +50,9 @@ export class Compositor {
     this.particles = new Particles();
     this.throwables = new Throwables(this.particles);
     this.overlay = new Overlay();
+    this.swap = new FaceSwapLayer();
+    this.makeup = new MakeupLayer();
+    this._skinTick = 0;
     this.camBlur = new Blur(4);
     this.bgBlur = new Blur(8);
 
@@ -92,6 +97,8 @@ export class Compositor {
     this.ar.setSize(w, h);
     this.particles.setSize(w, h);
     this.overlay.setSize(w, h);
+    this.swap.setSize(w, h);
+    this.makeup.setSize(w, h);
     this.avatar.setAspect(w / h);
     this.post.uniforms.uRes.value.set(w, h);
   }
@@ -281,12 +288,19 @@ export class Compositor {
       const mx = Math.max(tc.r, tc.g, tc.b, 0.001);
       const k = useMask && bgType === 'scene' ? f.relight * 0.22 : 0;
       pm.uRelight.value.set(1 + (tc.r / mx - 1) * k, 1 + (tc.g / mx - 1) * k, 1 + (tc.b / mx - 1) * k);
-      const warpIds = [s.face.warp, ...(s.face.warps || [])].filter((w, i, a) => w && w !== 'none' && a.indexOf(w) === i);
+      // AI-ansikte: förvrängningar stängs av (ansiktsnätet följer de ospårade punkterna)
+      const swapping = s.face.swap && s.face.swap !== 'none' && this.swap.current?.id === s.face.swap;
+      const warpIds = swapping ? [] : [s.face.warp, ...(s.face.warps || [])].filter((w, i, a) => w && w !== 'none' && a.indexOf(w) === i);
       const warps = computeAllWarps(warpIds, s.face.warpStrength, face);
       pm.uWarpCount.value = warps.length;
       for (let i = 0; i < MAX_WARPS; i++) pm.uWarp.value[i].set(...(warps[i] ?? [0, 0, 0, 0]));
       pm.uShake.value.set(sh.x, sh.y);
       this.personPass.render(r, this.fgRT);
+      if (swapping && this.swap.update(face, this.view, W, H, { dt, opacity: s.face.swapAmount ?? 1, shade: s.face.swapLight ?? 0.75 })) {
+        if (this._skinTick++ % 10 === 0) this.swap.measureSkin(this.tracker._faceCv, face.lm);
+        this.swap.render(r, this.fgRT, this.videoTex);
+      } else if (!swapping) this.swap.hide();
+      if (this.makeup.update(face, this.view, W, H, s.face.makeup)) this.makeup.render(r, this.fgRT);
       this.ar.attach(null);
       this.ar.update(face, this.view, dt, t, { audio: this.audioSmooth });
       if (this.ar.visible) r.render(this.ar.scene, this.ar.camera);

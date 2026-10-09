@@ -12,6 +12,7 @@ import { EFFECTS } from '../app/effects.js';
 import { THROWABLES } from '../render/fx/throwables.js';
 import { BUILTIN_PERSONAS, PERSONA_GROUPS } from '../app/personas.js';
 import { SHARE_TABS, SHARE_PANELS } from './panelsShare.js';
+import { FACE_LIST, MAKEUP_PRESETS, faceImage } from '../app/faces.js';
 import { SKEP_EMOJIS, SKEP_MAP, EMOJI_SETS, PLACEMENTS, TEXT_STYLES, svgUrl } from './emojis.js';
 
 export const esc = (s = '') => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -44,6 +45,7 @@ export const stickerIcon = (it) => (it.kind === 'skep' ? skepImg(it.value) : it.
 
 export const TABS = [
   { id: 'home', ...SHARE_TABS.home },
+  { id: 'aiface', icon: 'scan', label: 'AI-ansikte', short: 'AI-ansikte', tip: 'AI-ansikte|Bli en annan, fotorealistisk person i realtid – kungen, presidenten m.fl. Alla är påhittade.' },
   { id: 'personas', icon: 'drama', label: 'Skepnader', short: 'Bli', tip: 'Skepnader|Färdiga figurer och looks – tecknat, kändisar, kungligheter, monster. Byt allt med ett tryck.' },
   { id: 'avatar', icon: 'bot', label: 'Figurer', short: 'Figur', tip: 'Figurer|Byt ut dig själv mot en 3D-figur som härmar dina miner: anka, kung, drake, robot…' },
   { id: 'background', icon: 'mountain', label: 'Platser', short: 'Plats', tip: 'Platser|Levande bakgrunder: tronsal, månen, röda mattan, neonstaden – eller suddigt rum.' },
@@ -61,7 +63,7 @@ export const TABS = [
   { id: 'phone', ...SHARE_TABS.phone },
   { id: 'settings', icon: 'settings', label: 'Inställn.', short: 'Inställn.', tip: 'Inställningar|Kvalitet, kamera, nedräkning, ljud och hjälp.' },
 ];
-export const MOBILE_TOOLS = ['personas', 'avatar', 'background', 'filter', 'stickers', 'voice', 'effects', 'layers'];
+export const MOBILE_TOOLS = ['aiface', 'personas', 'avatar', 'background', 'filter', 'stickers', 'voice', 'effects', 'layers'];
 
 const ACC_GROUPS = [
   { name: 'Hattar, kronor & hår', slots: ['head', 'hair', 'above', 'helmet'] },
@@ -71,6 +73,37 @@ const ACC_GROUPS = [
 const COLOR_LABELS = { primary: 'Huvudfärg', accent: 'Detaljer', glow: 'Extra', skin: 'Hy', hair: 'Hår' };
 
 const PANELS = {
+  aiface: {
+    title: 'AI-ansikte',
+    sub: 'Bli en annan, fotorealistisk person i realtid. Ögon och mun är dina egna – blinka och prata som vanligt.',
+    render: (s) => {
+      const on = s.face.swap && s.face.swap !== 'none';
+      const faces = [
+        card({ action: 'swapFace', arg: 'none', activePath: 'face.swap', emoji: icon('user', 30), name: 'Ditt eget', desc: 'AI-ansiktet av', tip: 'Ditt eget ansikte|Stäng av AI-ansiktet och visa dig själv.' }),
+        ...FACE_LIST.map((f) => card({ action: 'swapFace', arg: f.id, activePath: 'face.swap', cls: 'face', emoji: `<img src="${faceImage(f.id)}" alt="" loading="lazy" draggable="false">`, name: f.name, desc: f.desc, tip: `${f.name}|${f.desc}. Påhittad person – AI-genererad.` })),
+      ].join('');
+      const presets = MAKEUP_PRESETS.map((p) => `<button class="chipbtn" data-action="makeupPreset" data-arg="${p.id}"><span>${p.icon}</span><span>${esc(p.name)}</span></button>`).join('');
+      const avatarNote = s.video.mode === 'avatar' ? note(`Du visar en 3D-figur just nu. ${btn('cameraMode', 'Visa kameran', 'video', 'Kameraläge|Byt till kameran så att AI-ansiktet syns.', 'sm')}`, 'warn') : '';
+      return `
+        ${avatarNote}
+        <div class="grid faces">${faces}</div>
+        <div style="height:14px"></div>
+        ${section('Inställningar', `
+          ${slider('face.swapAmount', 'Styrka', 0, 1, 0.01, 'pct', 'Styrka|Hur mycket av AI-ansiktet som syns. Lägre värde blandar in ditt eget.', 1)}
+          ${slider('face.swapLight', 'Rummets ljus', 0, 1, 0.01, 'pct', 'Rummets ljus|För över ljus och skuggor från ditt rum till ansiktet så att det smälter in.', 0.5)}
+          ${on ? '' : '<p class="muted" style="margin:6px 0 0">Välj ett ansikte ovan för att slå på.</p>'}`)}
+        ${section('Smink', `
+          <div class="cats">${presets}</div>
+          ${slider('face.makeup.lips', 'Läppstift', 0, 1, 0.01, 'pct', 'Läppstift|Färg på läpparna – blandas in som riktigt smink.', 0)}
+          ${slider('face.makeup.blush', 'Rouge', 0, 1, 0.01, 'pct', 'Rouge|Mjuk färg på kinderna.', 0)}
+          <div class="colors">
+            <label class="color" data-tip="Läppstiftsfärg|Tryck för att välja färg."><input type="color" data-bind="face.makeup.lipColor">Läppar</label>
+            <label class="color" data-tip="Rougefärg|Tryck för att välja färg."><input type="color" data-bind="face.makeup.blushColor">Kinder</label>
+          </div>`, 'Smink|Fungerar både på AI-ansiktet och på ditt eget.')}
+        ${section('Plats', `<div class="row">${btn('realBg', 'Suddigt rum', 'eye', 'Suddigt rum|Ditt riktiga rum, suddigt – som i ett videosamtal.', '', 'blur')}${btn('tab', 'Välj plats', 'mountain', 'Platser|Tronsal, podium, röda mattan…', '', 'background')}</div>`)}
+        ${note('Alla ansikten är AI-genererade och föreställer påhittade personer – ingen riktig människa. Det går inte att ladda upp någon annans ansikte.')}`;
+    },
+  },
   personas: {
     title: 'Skepnader',
     sub: 'Hela looken – figur, plats, filter och röst – med ett tryck.',

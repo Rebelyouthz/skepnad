@@ -34,7 +34,7 @@ uniform sampler2D tVideo;
 uniform vec3 uGain;
 uniform float uShade;
 uniform float uOpacity;
-uniform vec2 uVidPx;
+uniform vec2 uRad;
 varying vec2 vUv;
 varying vec2 vVid;
 varying float vA;
@@ -43,8 +43,8 @@ vec3 vid(vec2 p) { return srgbToLinear(texture2D(tVideo, p).rgb); }
 void main() {
   vec3 face = texture2D(tFace, vUv).rgb;
   // Ljus/skuggor från kameran: lokal ljushet i kamerabilden / i AI-bilden
-  vec2 r = uVidPx * 9.0;
-  float live = 0.0;
+  vec2 r = uRad;
+  float live = luma(vid(vVid)) * 0.5;
   live += luma(vid(vVid + vec2(r.x, 0.0)));
   live += luma(vid(vVid - vec2(r.x, 0.0)));
   live += luma(vid(vVid + vec2(0.0, r.y)));
@@ -53,9 +53,11 @@ void main() {
   live += luma(vid(vVid - r * 0.7));
   live += luma(vid(vVid + vec2(r.x, -r.y) * 0.7));
   live += luma(vid(vVid + vec2(-r.x, r.y) * 0.7));
-  live /= 8.0;
-  float base = luma(texture2D(tFace, vUv, 4.5).rgb * uGain) + 0.003;
-  float shade = clamp((live + 0.003) / base, 0.35, 2.2);
+  live += luma(vid(vVid + r * 0.45)) + luma(vid(vVid - r * 0.45));
+  live /= 10.5;
+  // Samma suddighet i AI-bilden (explicit mipnivå ≈ 7 % av ansiktsbredden)
+  float base = luma(textureLod(tFace, vUv, 5.0).rgb * uGain) + 0.003;
+  float shade = clamp((live + 0.003) / base, 0.6, 1.5);
   vec3 col = face * uGain * mix(1.0, shade, uShade);
   float a = vA * uOpacity;
   gl_FragColor = vec4(col * a, a);
@@ -74,9 +76,9 @@ export class FaceSwapLayer {
       tFace: { value: null },
       tVideo: { value: null },
       uGain: { value: new THREE.Vector3(1, 1, 1) },
-      uShade: { value: 0.85 },
+      uShade: { value: 0.75 },
       uOpacity: { value: 1 },
-      uVidPx: { value: new THREE.Vector2(1 / 640, 1 / 360) },
+      uRad: { value: new THREE.Vector2(0.03, 0.05) },
     };
     this.mat = new THREE.ShaderMaterial({
       uniforms: this.uniforms,
@@ -201,31 +203,51 @@ export class FaceSwapLayer {
       v /= 255;
       return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
     };
+    let x0 = w;
+    let y0 = h;
+    let x1 = 0;
+    let y1 = 0;
     for (const i of SKIN_POINTS) {
-      const x = Math.round(lm[i * 3] * w) - 2;
-      const y = Math.round(lm[i * 3 + 1] * h) - 2;
-      if (x < 0 || y < 0 || x + 5 > w || y + 5 > h) continue;
-      const d = g.getImageData(x, y, 5, 5).data;
-      for (let k = 0; k < d.length; k += 4) {
-        r += lin(d[k]);
-        gg += lin(d[k + 1]);
-        b += lin(d[k + 2]);
-        n++;
+      x0 = Math.min(x0, lm[i * 3] * w);
+      x1 = Math.max(x1, lm[i * 3] * w);
+      y0 = Math.min(y0, lm[i * 3 + 1] * h);
+      y1 = Math.max(y1, lm[i * 3 + 1] * h);
+    }
+    x0 = Math.max(0, Math.floor(x0) - 3);
+    y0 = Math.max(0, Math.floor(y0) - 3);
+    const bw = Math.min(w, Math.ceil(x1) + 4) - x0;
+    const bh = Math.min(h, Math.ceil(y1) + 4) - y0;
+    if (bw < 6 || bh < 6) return;
+    const d = g.getImageData(x0, y0, bw, bh).data;
+    for (const i of SKIN_POINTS) {
+      const cx = Math.round(lm[i * 3] * w) - x0;
+      const cy = Math.round(lm[i * 3 + 1] * h) - y0;
+      for (let yy = cy - 2; yy <= cy + 2; yy++) {
+        for (let xx = cx - 2; xx <= cx + 2; xx++) {
+          if (xx < 0 || yy < 0 || xx >= bw || yy >= bh) continue;
+          const k = (yy * bw + xx) * 4;
+          r += lin(d[k]);
+          gg += lin(d[k + 1]);
+          b += lin(d[k + 2]);
+          n++;
+        }
       }
     }
     if (!n || !this.targetSkin) return;
     const live = new THREE.Vector3(r / n, gg / n, b / n);
     const t = this.targetSkin;
     const want = new THREE.Vector3(live.x / Math.max(t.x, 0.01), live.y / Math.max(t.y, 0.01), live.z / Math.max(t.z, 0.01));
-    // Behåll AI-ansiktets egen hudton till viss del (annars blir alla lika)
+    // Behåll AI-ansiktets egen hudton (annars ser alla ut som du): ljusstyrkan
+    // matchas till 60 %, färgtonen bara till 30 %
     const avg = (want.x + want.y + want.z) / 3;
-    want.set(avg + (want.x - avg) * 0.7, avg + (want.y - avg) * 0.7, avg + (want.z - avg) * 0.7);
+    const lum = 1 + (avg - 1) * 0.6;
+    want.set(lum + (want.x - avg) * 0.3, lum + (want.y - avg) * 0.3, lum + (want.z - avg) * 0.3);
     want.clampScalar(0.45, 2.2);
     this.gain.lerp(want, 0.25);
   }
 
   /** Flytta hörnen till dina spårade punkter. Returnerar false om inget ska ritas. */
-  update(face, view, W, H, { dt = 1 / 30, opacity = 1, shade = 0.85 } = {}) {
+  update(face, view, W, H, { dt = 1 / 30, opacity = 1, shade = 0.75 } = {}) {
     if (!this.current || !face?.present) {
       this.appear = Math.max(0, this.appear - dt * 4);
       return false;
@@ -247,8 +269,15 @@ export class FaceSwapLayer {
     this.uniforms.uGain.value.copy(this.gain);
     this.uniforms.uOpacity.value = opacity * this.appear;
     this.uniforms.uShade.value = shade;
-    if (face.videoW) this.uniforms.uVidPx.value.set(1 / face.videoW, 1 / face.videoH);
+    // Suddradie i videons uv: ~7 % av ansiktets bredd, oavsett hur nära kameran du är
+    const fw = Math.hypot(lm[454 * 3] - lm[234 * 3], (lm[454 * 3 + 1] - lm[234 * 3 + 1]) * (face.videoH / face.videoW || 0.5625));
+    this.uniforms.uRad.value.set(fw * 0.07, (fw * 0.07 * (face.videoW || 16)) / (face.videoH || 9));
     return true;
+  }
+
+  /** Glöm att ansiktet syntes, så att det tonar in mjukt nästa gång det slås på. */
+  hide() {
+    this.appear = 0;
   }
 
   render(renderer, target, videoTex) {

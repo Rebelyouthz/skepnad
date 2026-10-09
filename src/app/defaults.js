@@ -71,6 +71,10 @@ export const DEFAULTS = {
     warp: 'none',
     warps: [], // extra förvrängningar samtidigt
     warpStrength: 0.85,
+    swap: 'king', // AI-ansikte (påhittad person i public/faces) eller 'none'
+    swapAmount: 1,
+    swapLight: 0.5, // hur mycket rummets ljus/skuggor förs över
+    makeup: { lips: 0, lipColor: '#a3242f', blush: 0, blushColor: '#e0707a' },
   },
   avatar: {
     id: 'robot',
@@ -138,15 +142,16 @@ export const DEFAULTS = {
   ui: {
     sounds: true,
     soundVolume: 0.55,
-    tab: 'home',
+    tab: 'aiface',
     tooltips: true,
     seenTour: false,
     reducedMotion: false,
     countdown: 3, // sekunder före inspelning/foto/live (0 = av)
     layout: 'auto', // 'auto' | 'mobile' | 'desktop'
     mobileInit: false,
-    personaCat: 'cartoon',
-    dockCat: 'cartoon',
+    personaCat: 'real',
+    dockCat: 'real',
+    aiFaceIntro: false, // AI-ansiktet har slagits på första gången
     avatarCat: '',
     emojiSet: 'faces',
     stickerPlace: 'above',

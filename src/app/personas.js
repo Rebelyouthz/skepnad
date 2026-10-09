@@ -4,6 +4,7 @@
 import { voiceParams } from '../audio/voices.js';
 
 export const PERSONA_GROUPS = [
+  { id: 'real', name: 'Realistiska', icon: '🎭' },
   { id: 'cartoon', name: 'Tecknat', icon: '🦆' },
   { id: 'famous', name: 'Kändisar & kungligheter', icon: '⭐' },
   { id: 'people', name: 'Äventyr & yrken', icon: '🧭' },
@@ -41,14 +42,30 @@ const cam = (group, id, name, icon, desc, acc, scene, voice, extra = {}) => ({
     video: { mode: 'camera' },
     background: { type: extra.bgType ?? 'scene', scene },
     filter: { id: extra.filter ?? 'none', intensity: extra.intensity ?? 1 },
-    face: { accessories: acc, warp: extra.warp ?? 'none' },
+    face: { accessories: acc, warp: extra.warp ?? 'none', swap: extra.swap ?? 'none' },
     voice: { preset: voice },
     ...(extra.ambience !== undefined ? { ambience: { enabled: extra.ambience } } : {}),
     ...(extra.lowerThird ? { overlays: { lowerThird: { enabled: true, style: 'news', byPersona: true, ...extra.lowerThird } } } : {}),
   },
 });
 
+/** Realistisk skepnad: ett fotorealistiskt AI-ansikte (påhittad person) på dig. */
+const real = (id, name, icon, desc, swap, acc, scene, voice, extra = {}) => cam('real', id, name, icon, desc, acc, scene, voice, { ...extra, swap });
+
 export const BUILTIN_PERSONAS = [
+  // ---------------------------------------------------------- Realistiska (AI-ansikten)
+  real('ai-kungen', 'Kungen', '🤴', 'Fotorealistiskt kungaansikte på dig, krona och tronsal. Påhittad person.', 'king', ['crown'], 'throne', 'royal', { lowerThird: { name: 'H.M. Kungen', title: 'Tal från tronen' } }),
+  real('ai-drottningen', 'Drottningen', '👸', 'Äldre drottning med tiara i tronsalen. Påhittad person.', 'queen', ['tiara'], 'throne', 'royal'),
+  real('ai-presidenten', 'Presidenten', '🏛️', 'Presidentens ansikte vid podiet med flaggor. Påhittad person.', 'president', [], 'podium', 'speech', { lowerThird: { name: 'Presidenten', title: 'Talar till nationen' } }),
+  real('ai-anna', 'Anna', '👩', 'Ung kvinna med mörkt hår – i suddigt rum som ett vanligt videosamtal.', 'anna', [], 'cabin', 'natural', { bgType: 'blur' }),
+  real('ai-marco', 'Marco', '🧔', 'Skäggig och glad – på röda mattan.', 'marco', [], 'redcarpet', 'natural'),
+  real('ai-mei', 'Mei', '👩', 'Leende Mei i stugan.', 'mei', [], 'cabin', 'natural'),
+  real('ai-sara', 'Sara', '👱‍♀️', 'Sara läser nyheterna.', 'sara', [], 'news', 'anchor', { lowerThird: { name: 'Sara Lind', title: 'Kvällsnytt' } }),
+  real('ai-johan', 'Johan', '👨', 'Johan i suddigt rum – perfekt för videosamtal.', 'johan', [], 'cabin', 'natural', { bgType: 'blur' }),
+  real('ai-emma', 'Emma', '👩', 'Emma i solnedgången.', 'emma', [], 'sunset', 'natural'),
+  real('ai-linnea', 'Linnea', '👩‍🦰', 'Rödhåriga Linnea på konsertscenen.', 'linnea', [], 'concert', 'pop'),
+  real('ai-erik', 'Erik', '👨‍🦱', 'Erik under norrskenet.', 'erik', [], 'aurora', 'natural'),
+  real('ai-mattias', 'Mattias', '🧑', 'Mattias på stranden.', 'mattias', [], 'beach', 'natural'),
   // ---------------------------------------------------------------- Tecknat
   av('cartoon', 'kvacke', 'Kvacke Anka', '🦆', 'Tecknad anka med sjömansmössa på stranden – med raspig ankröst. Kvack!', 'duck', 'beach', 'duck', { acc: ['sailorCap'] }),
   av('cartoon', 'kyckis', 'Kyckis', '🐥', 'Fluffig kyckling vid sagoslottet med pipig musröst.', 'chick', 'castle', 'mouse'),
