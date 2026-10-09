@@ -1,6 +1,23 @@
-# 🎭 Skepnad – live-avatar & röststudio
+# 🎭 Skepnad – bli vem du vill, live
 
-**Bli vem du vill. Se ut och låt som någon annan – live.**
+**Se ut och låt som vem du vill – i datorn och i mobilen.**
+
+## 📱 Öppna i mobilen (eller vilken dator som helst)
+
+**👉 https://rebelyouthz.github.io/skepnad/**
+
+1. Öppna länken i **Chrome** på telefonen.
+2. Tryck **Starta kamera & mikrofon** och tillåt.
+3. Menyn ⋮ → **Lägg till på startskärmen** – nu har du en egen Skepnad-ikon.
+
+I mobilen funkar: 41+ figurer (anka, kung, president, drake, zombie …), ~70 färdiga skepnader, röster,
+levande platser, emojis du drar runt i bilden, filterlager, 3-2-1-nedräkning, inspelning, foto, fotobås –
+och **Dela** direkt till Messenger, TikTok, YouTube och WhatsApp. Klippen sparas i appen under *Mina klipp*.
+
+*Livesändning till YouTube/Twitch och samtalskameran (Messenger/Meet/Discord i webbläsaren) görs från
+datorn med Skepnad-motorn nedan – en webbsida kan inte skicka RTMP själv.*
+
+Kändisar, kungligheter och presidenter i appen är påhittade roller – inga riktiga personer.
 
 Skepnad är en streamingstudio som körs helt lokalt i webbläsaren. Du kan bli en 3D-avatar som härmar dina miner, byta röst i realtid, sitta på levande, mysiga platser, lägga på filter och AR-tillbehör och spela ljudeffekter. Bilden går till OBS, Discord, Zoom eller Twitch.
 

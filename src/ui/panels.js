@@ -394,7 +394,6 @@ const PANELS = {
       return `
         ${section('Roliga lägen', `<div class="grid wide">
           ${card({ action: 'booth', arg: '', emoji: '📸', name: 'Fotobås', desc: '4 bilder med nedräkning → en fotoremsa att dela.', tip: 'Fotobås|Fyra foton i rad med nedräkning – blir en snygg remsa du kan spara och dela.' })}
-          ${card({ action: 'game', arg: 'candy', emoji: '🍬', name: 'Godisjakten', desc: 'Fånga fallande godis med munnen! 30 sekunder.', tip: 'Godisjakten|Ett spel: öppna munnen när godiset faller in i den. Undvik bomberna!' })}
           ${card({ action: 'random', arg: '', emoji: '🎲', name: 'Överraska mig', desc: 'Slumpa figur, plats, röst och emoji.', tip: 'Överraska mig|Slumpar en helt ny look. Tryck igen och igen!' })}
           ${card({ action: 'screenshot', arg: '', emoji: '🖼️', name: 'Ta ett foto', desc: 'Sparar en bild av det tittarna ser.', tip: 'Foto|Sparar en skärmdump (P).' })}
         </div>`)}

@@ -3,11 +3,50 @@
 // Med motorn strömmas bitarna direkt till Videor\Skepnad (kraschsäkert).
 
 const MP4 = ['video/mp4;codecs=avc1.640028,mp4a.40.2', 'video/mp4;codecs=avc1.42E01F,mp4a.40.2', 'video/mp4'];
-const WEBM = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+const WEBM = ['video/webm;codecs=vp8,opus', 'video/webm;codecs=vp9,opus', 'video/webm'];
+
+// Självläkning: vissa webbläsare/grafikdrivrutiner kraschar fliken med MP4-
+// kodaren. Vi skriver ner formatet innan inspelningen startar och stryker det
+// när första biten kommit – finns det kvar vid nästa start kraschade det.
+const BAD_KEY = 'skepnad:badMime';
+const TRY_KEY = 'skepnad:recTry';
+const ls = {
+  get: (k) => {
+    try {
+      return localStorage.getItem(k);
+    } catch {
+      return null;
+    }
+  },
+  set: (k, v) => {
+    try {
+      if (v == null) localStorage.removeItem(k);
+      else localStorage.setItem(k, v);
+    } catch {
+      /* privat läge */
+    }
+  },
+};
+const badList = () => JSON.parse(ls.get(BAD_KEY) || '[]');
+
+/** Anropas vid start. Returnerar formatet som kraschade förra gången (eller null). */
+export function checkRecorderCrash() {
+  const t = ls.get(TRY_KEY);
+  if (!t) return null;
+  ls.set(BAD_KEY, JSON.stringify([...new Set([...badList(), t])]));
+  ls.set(TRY_KEY, null);
+  return t;
+}
+
+const isPhone = () => /Android|iPhone|iPad/i.test(navigator.userAgent);
 
 export function pickRecordingMime() {
-  const all = [...MP4, ...WEBM];
-  return all.find((t) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(t)) || '';
+  if (typeof MediaRecorder === 'undefined') return '';
+  const bad = badList();
+  // Telefon: MP4 först (bäst för galleri, Messenger, TikTok). Dator: WebM först –
+  // motorn gör om klippet till MP4 efteråt, och Chromes MP4-kodare kan krascha på datorer.
+  const order = isPhone() ? [...MP4, ...WEBM] : [...WEBM, ...MP4];
+  return order.find((t) => !bad.includes(t) && MediaRecorder.isTypeSupported(t)) || '';
 }
 
 export class Recorder {
@@ -48,11 +87,13 @@ export class Recorder {
     this.rec = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: vbps, audioBitsPerSecond: 192_000 });
     this.rec.ondataavailable = (e) => {
       if (!e.data.size) return;
+      ls.set(TRY_KEY, null);
       if (this.sink) {
         const sink = this.sink;
         this.chain = this.chain.then(async () => sink.write(await e.data.arrayBuffer()));
       } else this.chunks.push(e.data);
     };
+    ls.set(TRY_KEY, mimeType);
     this.rec.start(1000);
     this.startedAt = performance.now();
   }

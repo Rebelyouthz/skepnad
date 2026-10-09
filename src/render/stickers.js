@@ -255,6 +255,12 @@ export class StickerLayer {
       const age = (now - this.born.get(it.id)) / 1000;
       const p = this.place(it, W, H);
       let { x, y, size, rot } = p;
+      // Håll klistermärket inne i bilden (t.ex. "ovanför huvudet" när huvudet är nära överkanten)
+      size = Math.min(size, H * 0.8);
+      const hw = (size * sp.aspect) / 2;
+      const hh = size / 2;
+      x = Math.min(Math.max(x, Math.min(hw * 0.9, W / 2)), Math.max(W - hw * 0.9, W / 2));
+      y = Math.min(Math.max(y, Math.min(hh * 0.9, H / 2)), Math.max(H - hh * 0.9, H / 2));
       const ph = hashStr(it.id) * 6.28;
       let k = easeBack(age / 0.45);
       if (it.anim === 'bob') y += Math.sin(t * 2.6 + ph) * size * 0.06;

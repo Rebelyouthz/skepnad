@@ -91,7 +91,7 @@ export const host = {
           new Promise((r) => {
             savedResolve = r;
             ws.send(JSON.stringify({ type: 'end' }));
-            setTimeout(() => r(null), 8000);
+            setTimeout(() => r(null), 5 * 60 * 1000);
           }),
       };
       ws.onopen = () => ws.send(JSON.stringify({ type: 'start', name }));
@@ -101,6 +101,7 @@ export const host = {
           sink.name = msg.name;
           resolve(sink);
         }
+        if (msg.type === 'converting') bus.emit('toast', { text: '💾 Gör om klippet till MP4…', kind: 'info' });
         if (msg.type === 'saved') {
           savedResolve?.(msg);
           ws.close();

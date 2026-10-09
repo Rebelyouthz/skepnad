@@ -132,3 +132,32 @@ export function encoderArgs(name, kbps, fps) {
       return ['-c:v', 'libx264', '-preset', 'veryfast', '-tune', 'zerolatency', '-b:v', b, '-maxrate', b, '-bufsize', `${kbps * 2}k`, '-g', g, '-keyint_min', g, '-sc_threshold', '0'];
   }
 }
+
+/**
+ * Gör om en WebM-inspelning till MP4 (H.264/AAC) så att den spelas överallt:
+ * Messenger, telefoner, YouTube. Returnerar sökvägen till MP4-filen eller null.
+ */
+export async function convertToMp4(input) {
+  const ff = await ensureFfmpeg().catch(() => null);
+  if (!ff) return null;
+  const output = input.replace(/\.webm$/i, '.mp4');
+  const enc = await pickEncoder(ff);
+  const HW = { nvenc: 'h264_nvenc', amf: 'h264_amf', qsv: 'h264_qsv' };
+  const video = HW[enc] ? ['-c:v', HW[enc], '-b:v', '8000k', '-maxrate', '10000k', '-bufsize', '16000k'] : ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20'];
+  const args = ['-hide_banner', '-loglevel', 'error', '-y', '-i', input, ...video, '-pix_fmt', 'yuv420p', '-r', '30', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', output];
+  const ok = await new Promise((resolve) => {
+    const p = spawn(ff, args, { windowsHide: true });
+    const t = setTimeout(() => p.kill(), 10 * 60 * 1000);
+    p.on('exit', (code) => {
+      clearTimeout(t);
+      resolve(code === 0);
+    });
+    p.on('error', () => resolve(false));
+  });
+  if (!ok || !existsSync(output) || statSync(output).size < 1000) {
+    rmSync(output, { force: true });
+    return null;
+  }
+  rmSync(input, { force: true });
+  return output;
+}

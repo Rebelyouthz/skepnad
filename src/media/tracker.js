@@ -157,7 +157,7 @@ export class Tracker {
   }
 
   /** Kör de modeller som behövs på en ny videobild. Returnerar true om något uppdaterades. */
-  process(video, { segment = true, gesture = false, gestureEvery = 2 } = {}) {
+  process(video, { segment = true, gesture = false, gestureEvery = 2, segEvery = 1, faceSize = 640 } = {}) {
     if (!video || video.readyState < 2 || !video.videoWidth) return false;
     if (video.currentTime === this._lastVideoTime) return false;
     this._lastVideoTime = video.currentTime;
@@ -172,7 +172,7 @@ export class Tracker {
     this.face.videoH = vh;
 
     // Nedskalade kopior: mycket billigare för MediaPipe att ladda upp/läsa än full 720p/1080p.
-    const small = this._scaled('_faceCv', video, 640, Math.round((640 * vh) / vw));
+    const small = this._scaled('_faceCv', video, faceSize, Math.round((faceSize * vh) / vw));
     if (this.faceTask) {
       const t0 = performance.now();
       try {
@@ -182,7 +182,7 @@ export class Tracker {
       }
       this.stats.faceMs = performance.now() - t0;
     }
-    if (segment && this.segTask) {
+    if (segment && this.segTask && this._frame % segEvery === 0) {
       const t0 = performance.now();
       try {
         const segIn = this._scaled('_segCv', small, 256, Math.round((256 * vh) / vw));

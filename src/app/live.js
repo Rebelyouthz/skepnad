@@ -20,7 +20,8 @@ export function outputUrl(def, cfg) {
 }
 
 function pickMime() {
-  const types = ['video/webm;codecs=h264,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+  // VP8 först: motorn kodar ändå om till H.264 för tjänsterna, och Chromes H.264-kodare kan krascha på vissa datorer.
+  const types = ['video/webm;codecs=vp8,opus', 'video/webm;codecs=vp9,opus', 'video/webm'];
   return types.find((t) => MediaRecorder.isTypeSupported(t)) || '';
 }
 

@@ -6,7 +6,7 @@ import { basename, extname, join, normalize, sep } from 'node:path';
 import { acceptWebSocket } from './ws.mjs';
 import { handleStreamSocket } from './stream.mjs';
 import { RemoteHub } from './remote.mjs';
-import { ffState, findFfmpeg, downloadFfmpeg } from './tools.mjs';
+import { ffState, findFfmpeg, downloadFfmpeg, convertToMp4 } from './tools.mjs';
 import { videosDir, reveal, openFolder, copyFileToClipboard, openInBrowser, lanAddresses, isWin } from './sys.mjs';
 
 export const VERSION = '1.1.0';
@@ -271,7 +271,16 @@ export function startServer({ root, port = 5174, open = false, exitWhenIdle = fa
         out = createWriteStream(file);
         ws.json({ type: 'ready', name: basename(file) });
       } else if (msg.type === 'end' && out) {
-        out.end(() => ws.json({ type: 'saved', name: basename(file), path: file, size }));
+        out.end(async () => {
+          let final = file;
+          // WebM (säkert inspelningsformat i webbläsaren) → MP4 som funkar överallt
+          if (/\.webm$/i.test(file) && size > 1000) {
+            ws.json({ type: 'converting' });
+            const mp4 = await convertToMp4(file).catch(() => null);
+            if (mp4) final = mp4;
+          }
+          ws.json({ type: 'saved', name: basename(final), path: final, size: existsSync(final) ? statSync(final).size : size });
+        });
         out = null;
       }
     });

@@ -35,17 +35,19 @@ export const SHARE_PANELS = {
     sub: 'Vad vill du göra idag? Välj – så guidar vi dig.',
     render: (s, ctx) => {
       const tiles = [
-        ['tab', 'personas', '🎭', 'Byt utseende', 'Avatarer, bakgrunder, filter och roliga tillbehör.'],
+        ['tab', 'personas', '🎭', 'Bli någon annan', 'Anka, kung, president, drake, zombie … med röst och plats.'],
+        ['tab', 'stickers', '😎', 'Emojis i bilden', 'Sätt emojis och pratbubblor på dig och dra runt dem.'],
         ['guide', 'record', '🎬', 'Spela in ett klipp', 'Till TikTok, YouTube eller för att skicka till kompisar.'],
-        ['tab', 'calls', '📞', 'Ring med Skepnad', 'Messenger, Discord, Zoom, Meet, Teams – som din avatar.'],
+        ['booth', '', '📸', 'Fotobås', 'Fyra foton med nedräkning → en fotoremsa.'],
+        ...(ctx.mobile ? [] : [['tab', 'calls', '📞', 'Ring med Skepnad', 'Messenger, Discord, Zoom, Meet, Teams – som din figur.']]),
         ['tab', 'live', '🔴', 'Gå live', 'YouTube, Twitch, TikTok, Kick eller Facebook.'],
         ['guide', 'youtube', '▶️', 'Lägg upp på YouTube', 'Från inspelning till uppladdat på en minut.'],
-        ['tab', 'phone', '📱', 'Styr från mobilen', 'Knappar för effekter och ljud direkt i handen.'],
+        ['tab', 'phone', '📱', 'Skepnad i mobilen', 'Öppna appen i telefonen med en länk eller QR-kod.'],
       ];
       const h = ctx.host;
       const ff = h.info?.ffmpeg?.state;
       return `
-        <div class="hub-hero"><div class="hub-wave">👋</div><div><h3>Hej! Vad vill du göra?</h3><p>Allt sparas och körs på din dator. Håll musen över saker för att få förklaringar.</p></div></div>
+        <div class="hub-hero"><div class="hub-wave">👋</div><div><h3>Hej! Vad vill du göra?</h3><p>Allt körs i din egen enhet. ${ctx.mobile ? 'Håll inne en knapp för att se vad den gör.' : 'Håll musen över saker för att få förklaringar.'}</p></div></div>
         <div class="hub-grid">${tiles
           .map(([a, arg, e, t, d]) => `<button class="card hub-tile" data-action="${a}" data-arg="${arg}" data-tip="${esc(t)}|${esc(d)}"><span class="emoji">${e}</span><span class="name">${t}</span><span class="desc">${d}</span></button>`)
           .join('')}</div>
@@ -54,9 +56,10 @@ export const SHARE_PANELS = {
           `<div class="status-list">
             ${statusRow(ctx.runtime.hasCamera ? true : 'warn', 'Kamera', ctx.runtime.hasCamera ? 'Igång' : 'Ingen kamera – avatarläget fungerar ändå')}
             ${statusRow(ctx.runtime.hasMic ? true : 'warn', 'Mikrofon', ctx.runtime.hasMic ? 'Igång' : 'Ingen mikrofon')}
-            ${statusRow(h.available ? true : 'warn', 'Skepnad-motorn', h.available ? `Klipp sparas i ${esc(h.info?.videosDir || 'Videor\\Skepnad')}` : 'Starta Skepnad med ikonen för att spara, dela och gå live')}
-            ${statusRow(ctx.calls.extPresent ? true : 'warn', 'Samtalstillägget', ctx.calls.extPresent ? 'Installerat – redo för samtal' : 'Inte installerat ännu', ctx.calls.extPresent ? '' : `<button class="btn sm" data-action="tab" data-arg="calls">Fixa</button>`)}
-            ${statusRow(ff === 'ready' ? true : 'warn', 'Sändningsmotorn', ff === 'ready' ? 'Redo att gå live' : ff === 'downloading' ? 'Laddas ner…' : 'Hämtas automatiskt första gången du går live')}
+            ${statusRow(true, 'Klipp & foton', h.available ? `Sparas i ${esc(h.info?.videosDir || 'Videor\\Skepnad')}` : 'Sparas i appen under Mina klipp – dela eller spara dem i enheten')}
+            ${ctx.mobile ? '' : statusRow(h.available ? true : 'warn', 'Skepnad-motorn (datorn)', h.available ? 'Igång – live, samtal och mobilkontroll fungerar' : 'Starta Skepnad med ikonen på datorn för att gå live och ringa')}
+            ${ctx.mobile ? '' : statusRow(ctx.calls.extPresent ? true : 'warn', 'Samtalstillägget', ctx.calls.extPresent ? 'Installerat – redo för samtal' : 'Inte installerat ännu', ctx.calls.extPresent ? '' : `<button class="btn sm" data-action="tab" data-arg="calls">Fixa</button>`)}
+            ${h.available ? statusRow(ff === 'ready' ? true : 'warn', 'Sändningsmotorn', ff === 'ready' ? 'Redo att gå live' : ff === 'downloading' ? 'Laddas ner…' : 'Hämtas automatiskt första gången du går live') : ''}
           </div>`,
         )}`;
     },
@@ -72,13 +75,15 @@ export const SHARE_PANELS = {
           <button class="rec-big ${ctx.recording ? 'on' : ''}" data-action="record" data-tip="Spela in|Starta eller stoppa inspelningen (tangent R).">${ctx.recording ? '<span class="sq"></span>Stoppa' : '<span class="dot"></span>Spela in'}</button>
           <div class="rec-info">${ctx.recording ? `<b class="rec-time" data-rec-time>00:00</b><small>Spelar in…</small>` : '<b>Redo</b><small>Tryck för att börja – eller tangenten R</small>'}</div>
         </div>
+        <div class="row" style="margin-top:10px">${btn('photo', 'Ta foto', 'camera', 'Foto|Med nedräkning – sparas i Mina klipp.', 'sm')}${btn('booth', 'Fotobås', 'booth', 'Fotobås|Fyra foton i rad → en fotoremsa.', 'sm')}</div>
         <div class="field" style="margin-top:12px"><label>Format</label>${formatSeg()}</div>
-        ${ctx.host.available ? note(`Klippen sparas automatiskt i <b>${esc(ctx.host.info?.videosDir || 'Videor\\Skepnad')}</b>.`, '', 'folder') : note('Klippen laddas ner till <b>Hämtade filer</b>. Starta Skepnad via ikonen för att få Mina klipp med delning.', 'warn')}`,
+        ${ctx.host.available ? note(`Klippen sparas automatiskt i <b>${esc(ctx.host.info?.videosDir || 'Videor\\Skepnad')}</b>.`, '', 'folder') : note('Klippen sparas här i appen. Tryck <b>Dela</b> för Messenger, TikTok, YouTube m.fl. – eller <b>Spara</b> för att lägga dem i enheten.', '', 'clapper')}`,
       )}
       ${section(
         'Mina klipp',
-        `<div class="row" style="margin-bottom:10px">${btn('openClipsFolder', 'Öppna mappen', 'folder', 'Öppna mappen|Visa alla klipp i Utforskaren.', 'sm')}${btn('refreshClips', 'Uppdatera', 'reset', 'Uppdatera|Hämta listan igen.', 'sm')}</div>
-         <div class="clip-list" id="clip-list"><p class="muted">Laddar…</p></div>`,
+        `<div class="row" style="margin-bottom:10px">${ctx.host.available ? btn('openClipsFolder', 'Öppna mappen', 'folder', 'Öppna mappen|Visa alla klipp i Utforskaren.', 'sm') : ''}${btn('refreshClips', 'Uppdatera', 'reset', 'Uppdatera|Hämta listan igen.', 'sm')}</div>
+         <div class="clip-list" id="clip-list"><p class="muted">Laddar…</p></div>
+         <div style="margin-top:12px"><label class="dropzone" data-drop="importClip" data-arg="" data-tip="Lägg till|Lägg till en video eller bild från galleriet/datorn i Mina klipp.">${icon('upload', 20)}<b>Lägg till video eller bild</b><span>Från galleriet eller datorn</span><input type="file" accept="video/*,image/*" hidden data-file="importClip" data-arg=""></label></div>`,
       )}`,
   },
 
@@ -105,9 +110,15 @@ export const SHARE_PANELS = {
           : st === 'preparing' || st === 'stopping'
             ? `<div class="live-card"><div class="live-badge wait">${icon('loader', 16)} ${st === 'stopping' ? 'Avslutar…' : esc(L.text || 'Förbereder…')}</div>${ctx.ffProgress != null ? `<div class="loadbar"><div class="track"><div class="fill" style="width:${Math.round(ctx.ffProgress * 100)}%"></div></div><p>Laddar ner sändningsmotorn (engångs, 30 MB)…</p></div>` : ''}</div>`
             : `<div class="live-card">${st === 'error' ? note(esc(L.error || 'Något gick fel.'), 'warn', 'alert') : ''}<button class="btn btn-primary big go-live" data-action="liveStart" data-tip="Gå live|Startar sändningen till alla tjänster du har slagit på nedan.">🔴 Gå live</button><small class="muted">Slå på en tjänst nedan och klistra in din streamnyckel först.</small></div>`;
+      if (!ctx.host.available) {
+        return `
+          <div class="hub-hero"><div class="hub-wave">🔴</div><div><h3>Gå live</h3><p>Direktsändning till YouTube, Twitch, TikTok, Kick och Facebook görs från datorn – där finns sändningsmotorn.</p></div></div>
+          ${section('Från datorn (rekommenderas)', `<ol class="steps"><li>Starta Skepnad på datorn med ikonen <b>Skepnad</b>.</li><li>Gå till fliken <b>Live</b>, slå på tjänsten och klistra in din streamnyckel.</li><li>Tryck <b>Gå live</b> – 3, 2, 1 och du sänder!</li></ol>`)}
+          ${section(ctx.mobile ? 'Från mobilen' : 'Utan motorn', `<ol class="steps"><li><b>Spela in</b> här i Skepnad och lägg upp klippet med <b>Dela</b> → TikTok, YouTube eller Instagram.</li><li>Vill du sända live direkt från telefonen: starta live i <b>TikTok-</b> eller <b>YouTube-appen</b> och välj <b>skärmdelning</b>. Öppna sedan Skepnad – tittarna ser din skepnad.</li></ol>${note('En webbsida kan inte skicka video direkt till YouTube/Twitch (de kräver RTMP). Därför sköter datorns sändningsmotor det.', '', 'info')}`)}
+          ${section('Format', formatSeg())}`;
+      }
       return `
         ${statusCard}
-        ${!ctx.host.available ? note('Livesändning kräver Skepnad-motorn. Starta Skepnad via ikonen <b>Skepnad</b> på datorn.', 'warn', 'alert') : ''}
         ${section('Vart vill du sända?', `<div class="svc-list">${cards}</div>`)}
         ${section(
           'Inställningar',
@@ -177,18 +188,25 @@ export const SHARE_PANELS = {
     sub: 'Använd telefonen som fjärrkontroll för Skepnad.',
     render: (s, ctx) => {
       const r = ctx.host.info?.remote;
-      if (!ctx.host.available) return note('Mobilkontrollen kräver Skepnad-motorn. Starta Skepnad via ikonen på datorn.', 'warn', 'alert');
-      return `
-        <div class="hub-hero"><div class="hub-wave">📱</div><div><h3>Fjärrkontroll i handen</h3><p>Tryck på effekter, ljud, röster och avatarer från soffan – perfekt när du streamar eller ringer.</p></div></div>
-        ${
+      const app = `
+        <div class="qr-card"><div class="qr" id="pages-qr"></div><div><b>Skanna med mobilkameran</b><ol class="steps"><li>Öppna länken i <b>Chrome</b>.</li><li>Tryck <b>Starta kamera &amp; mikrofon</b> och tillåt.</li><li>Menyn ⋮ → <b>Lägg till på startskärmen</b> – nu har du en egen Skepnad-ikon!</li></ol></div></div>
+        <div class="urlbox">${esc(ctx.pagesUrl)}</div>
+        <div class="row" style="margin-top:10px">${btn('copyPages', 'Kopiera länken', 'link', 'Kopiera|Skicka länken till mobilen via Messenger, sms eller mejl.', 'sm')}${btn('openPages', 'Öppna', 'external', 'Öppna|Öppna webbadressen.', 'sm')}</div>`;
+      const remote = !ctx.host.available
+        ? note('Fjärrkontrollen (styr datorns Skepnad från mobilen) kräver att Skepnad startas med ikonen på datorn.', '', 'info')
+        : `${
           r?.running
             ? `<div class="qr-card"><div class="qr" id="remote-qr"></div><div><b>Skanna med mobilkameran</b><ol class="steps"><li>Mobilen ska vara på <b>samma WiFi</b> som datorn.</li><li>Öppna kameran och rikta den mot koden.</li><li>Tryck på länken som dyker upp.</li></ol><small class="muted" data-remote-count>${ctx.host.remoteCount ? `📱 ${ctx.host.remoteCount} mobil ansluten` : 'Ingen mobil ansluten ännu'}</small></div></div>
                <div class="field" style="margin-top:12px"><label>Eller skriv in adressen i mobilens webbläsare</label><input type="text" readonly value="${esc(r.urls[0] || '')}" onclick="this.select()"></div>
                ${note('Om Windows frågar om nätverksåtkomst: klicka <b>Tillåt</b>. Annars når inte mobilen datorn.', 'warn')}
-               <div class="row">${btn('remoteStop', 'Stäng av mobilkontrollen', 'x', 'Stäng av|Mobilen kopplas bort.', 'sm')}</div>`
-            : `<button class="btn btn-primary big" data-action="remoteStart" data-tip="Starta|Visar en QR-kod som du skannar med mobilen.">${icon('qr', 20)}<span>Visa QR-kod</span></button>`
-        }
-        ${section('Tips', `<ul class="steps"><li>Lägg till sidan på hemskärmen i mobilen (menyn ⋮ → <b>Lägg till på startskärmen</b>) så får du en egen app-ikon.</li><li>Vill du skicka ett klipp till mobilen? Gå till <b>Mina klipp</b> → <b>Dela</b>.</li></ul>`)}`;
+               <div class="row">${btn('remoteStop', 'Stäng av fjärrkontrollen', 'x', 'Stäng av|Mobilen kopplas bort.', 'sm')}</div>`
+            : `<button class="btn btn-primary" data-action="remoteStart" data-tip="Starta|Visar en QR-kod som du skannar med mobilen.">${icon('qr', 18)}<span>Visa QR-kod för fjärrkontrollen</span></button>`
+        }`;
+      return `
+        <div class="hub-hero"><div class="hub-wave">📱</div><div><h3>Skepnad i mobilen</h3><p>Hela appen i telefonen: kameran, figurerna, rösterna, emojis och inspelning – dela direkt till Messenger, TikTok och YouTube.</p></div></div>
+        ${section('Öppna Skepnad i mobilen', app)}
+        ${section('Fjärrkontroll till datorn', `<p class="muted" style="margin:0 0 10px">Tryck på effekter, ljud och röster i mobilen medan datorn streamar.</p>${remote}`)}
+        ${section('Tips', `<ul class="steps"><li>Dela ett klipp till mobilen: <b>Mina klipp</b> → <b>Dela</b>.</li><li>Messenger-appen i telefonen kan inte använda Skepnad som kamera – ring från datorn eller skicka klipp.</li></ul>`)}`;
     },
   },
 };

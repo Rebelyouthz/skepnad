@@ -40,6 +40,7 @@ export const DEFAULTS = {
     autoFrameZoom: 1.35,
     aspect: 'landscape', // 'landscape' (16:9) | 'portrait' (9:16)
     cameraId: '',
+    facing: 'user', // 'user' (selfie) | 'environment' (bakre kameran)
     feather: 0.5,
   },
   background: {
@@ -141,5 +142,14 @@ export const DEFAULTS = {
     tooltips: true,
     seenTour: false,
     reducedMotion: false,
+    countdown: 3, // sekunder före inspelning/foto/live (0 = av)
+    layout: 'auto', // 'auto' | 'mobile' | 'desktop'
+    mobileInit: false,
+    personaCat: 'cartoon',
+    dockCat: 'cartoon',
+    avatarCat: '',
+    emojiSet: 'faces',
+    stickerPlace: 'above',
+    captureMode: 'video', // mobil: 'photo' | 'video' | 'booth' | 'live'
   },
 };
