@@ -87,6 +87,7 @@ export const host = {
       const sink = {
         name,
         write: (buf) => ws.readyState === 1 && ws.send(buf),
+        abort: () => ws.close(),
         end: () =>
           new Promise((r) => {
             savedResolve = r;

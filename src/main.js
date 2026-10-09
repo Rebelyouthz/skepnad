@@ -93,6 +93,7 @@ window.skepnad = {
   tracker,
   host,
   live,
+  recorder,
   clipsLib,
   avatars: AVATAR_LIST,
   scenes: SCENES,
@@ -1104,18 +1105,40 @@ async function toggleRecord() {
   const ok = await countdown($('#countdown'), store.get('ui.countdown'), 'rec');
   runtime.busy = false;
   if (!ok) return;
-  try {
-    await recorder.start(window.skepnad.outputStream(), audio.stream, { host, baseName: `Skepnad ${stamp()}`, pixels: compositor.width * compositor.height });
+  recRetries = 0;
+  if (await startRecorder()) {
     uiSounds.play('recStart');
     if (!runtime.mobile) toast('Inspelning startad – tryck R för att stoppa.');
-  } catch (err) {
-    console.error(err);
-    toast('Kunde inte starta inspelningen.', 'error');
   }
   updateRecordUi();
   if (currentTab === 'clips') rerenderPanel();
   pushRemoteState();
 }
+
+let recRetries = 0;
+async function startRecorder() {
+  try {
+    await recorder.start(window.skepnad.outputStream(), audio.stream, { host, baseName: `Skepnad ${stamp()}`, pixels: compositor.width * compositor.height });
+    return true;
+  } catch (err) {
+    console.error(err);
+    toast('Kunde inte starta inspelningen.', 'error');
+    return false;
+  }
+}
+
+// Om webbläsarens videokodare strular byter vi format i farten och fortsätter spela in.
+recorder.onfail = async () => {
+  updateRecordUi();
+  recRetries += 1;
+  if (recRetries > 3) {
+    toast('Inspelningen fungerar inte i den här webbläsaren – prova Chrome.', 'error', 5000);
+    return;
+  }
+  toast('Byter videoformat – inspelningen fortsätter…', 'info', 2200);
+  await startRecorder();
+  updateRecordUi();
+};
 
 async function screenshot() {
   stickers?.select(null);

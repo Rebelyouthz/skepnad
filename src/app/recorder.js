@@ -66,11 +66,33 @@ export class Recorder {
     return this.active ? (performance.now() - this.startedAt) / 1000 : 0;
   }
 
+  /** Markera formatet som trasigt och släpp inspelningen. onfail(reason) får main att starta om med nästa format. */
+  _fail(reason) {
+    if (!this.rec) return;
+    clearTimeout(this._wd);
+    ls.set(BAD_KEY, JSON.stringify([...new Set([...badList(), this.mime])]));
+    ls.set(TRY_KEY, null);
+    const rec = this.rec;
+    this.rec = null;
+    rec.ondataavailable = null;
+    rec.onstop = null;
+    try {
+      if (rec.state !== 'inactive') rec.stop();
+    } catch {
+      /* redan stoppad */
+    }
+    this.sink?.abort?.();
+    this.sink = null;
+    console.warn('[inspelning] formatet', this.mime, 'fungerade inte:', reason);
+    this.onfail?.(reason, this.mime);
+  }
+
   /** host: klient för motorn (kan vara otillgänglig). */
   async start(videoStream, audioStream, { host, baseName, pixels = 1280 * 720 }) {
     const tracks = [...videoStream.getVideoTracks(), ...(audioStream?.getAudioTracks() ?? [])];
     const stream = new MediaStream(tracks);
     const mimeType = pickRecordingMime();
+    this.gotData = false;
     this.ext = mimeType.startsWith('video/mp4') ? 'mp4' : 'webm';
     this.mime = mimeType;
     this.chunks = [];
@@ -85,8 +107,12 @@ export class Recorder {
     }
     const vbps = pixels > 1.5e6 ? 14_000_000 : 9_000_000;
     this.rec = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: vbps, audioBitsPerSecond: 192_000 });
+    this.rec.onerror = (e) => this._fail(e.error?.name || 'error');
+    // Oväntat stopp (t.ex. kodaren dog) innan vi själva stoppade
+    this.rec.onstop = () => this._fail('stopped');
     this.rec.ondataavailable = (e) => {
       if (!e.data.size) return;
+      this.gotData = true;
       ls.set(TRY_KEY, null);
       if (this.sink) {
         const sink = this.sink;
@@ -96,13 +122,18 @@ export class Recorder {
     ls.set(TRY_KEY, mimeType);
     this.rec.start(1000);
     this.startedAt = performance.now();
+    // Vakthund: ingen videodata alls efter 3,5 s = kodaren fungerar inte här
+    clearTimeout(this._wd);
+    this._wd = setTimeout(() => !this.gotData && this._fail('nodata'), 3500);
   }
 
   /** Returnerar { saved: {name, path, size} } eller { blob, ext }. */
   stop() {
     return new Promise((resolve) => {
       if (!this.rec) return resolve(null);
+      clearTimeout(this._wd);
       const duration = this.elapsed;
+      this.rec.onerror = null;
       this.rec.onstop = async () => {
         this.rec = null;
         if (this.sink) {

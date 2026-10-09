@@ -284,7 +284,13 @@ export function startServer({ root, port = 5174, open = false, exitWhenIdle = fa
         out = null;
       }
     });
-    ws.on('close', () => out?.end());
+    ws.on('close', () => {
+      if (!out) return;
+      // Avbruten inspelning (t.ex. formatbyte) – städa bort tomma filer
+      const f = file;
+      out.end(() => size === 0 && existsSync(f) && unlinkSync(f));
+      out = null;
+    });
   }
 
   return new Promise((resolve) => {

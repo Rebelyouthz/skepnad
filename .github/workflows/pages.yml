@@ -2,9 +2,9 @@
 # Appen blir då nåbar på https://rebelyouthz.github.io/skepnad/ – även i mobilen.
 name: Publicera på GitHub Pages
 
+# Manuell start: kontots GitHub Actions är spärrat just nu, så publiceringen
+# görs med `npm run deploy` (scripts/deploy-pages.sh) istället.
 on:
-  push:
-    branches: [skepnad-v2]
   workflow_dispatch:
 
 permissions:
