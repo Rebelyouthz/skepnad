@@ -73,7 +73,7 @@ export const SHARE_PANELS = {
         'Spela in',
         `<div class="rec-card">
           <button class="rec-big ${ctx.recording ? 'on' : ''}" data-action="record" data-tip="Spela in|Starta eller stoppa inspelningen (tangent R).">${ctx.recording ? '<span class="sq"></span>Stoppa' : '<span class="dot"></span>Spela in'}</button>
-          <div class="rec-info">${ctx.recording ? `<b class="rec-time" data-rec-time>00:00</b><small>Spelar in…</small>` : '<b>Redo</b><small>Tryck för att börja – eller tangenten R</small>'}</div>
+          <div class="rec-info">${ctx.recording ? `<b class="rec-time" data-rec-time>00:00</b><small>Spelar in…</small>` : `<b>Redo</b><small>${ctx.mobile ? 'Tryck för att börja – 3, 2, 1!' : 'Tryck för att börja – eller tangenten R'}</small>`}</div>
         </div>
         <div class="row" style="margin-top:10px">${btn('photo', 'Ta foto', 'camera', 'Foto|Med nedräkning – sparas i Mina klipp.', 'sm')}${btn('booth', 'Fotobås', 'booth', 'Fotobås|Fyra foton i rad → en fotoremsa.', 'sm')}</div>
         <div class="field" style="margin-top:12px"><label>Format</label>${formatSeg()}</div>

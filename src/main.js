@@ -785,7 +785,7 @@ function clipButtons(key, inModal = false) {
   const b = (op, ic, label, tip, cls = '') => `<button class="btn ${inModal ? '' : 'sm'} ${cls} ${label ? '' : 'icon-only'}" data-action="clip" data-arg="${op}|${esc(key)}" data-tip="${tip}"${inModal ? ' data-close' : ''}>${icon(ic, inModal ? 16 : 14)}${label ? `<span>${label}</span>` : ''}</button>`;
   return `<div class="row clip-actions" style="flex-wrap:wrap;gap:6px;${inModal ? 'margin-top:12px' : ''}">
     ${b('share', 'share', 'Dela', 'Dela|Skicka till Messenger, WhatsApp, TikTok, YouTube, mejl …', 'btn-primary')}
-    ${lib ? b('save', 'download', inModal ? 'Spara i enheten' : '', 'Spara|Ladda ner filen till telefonen/datorn.') : host.available ? b('copy', 'clip-copy', inModal ? 'Kopiera till chatten' : '', 'Kopiera|Klistra sedan in med Ctrl+V i Messenger, Discord eller mejl.') : ''}
+    ${lib ? b('save', 'download', inModal ? 'Spara' : '', 'Spara|Ladda ner filen till telefonen/datorn.') : host.available ? b('copy', 'clip-copy', inModal ? 'Kopiera till chatten' : '', 'Kopiera|Klistra sedan in med Ctrl+V i Messenger, Discord eller mejl.') : ''}
     ${b('youtube', 'upload', inModal ? 'YouTube' : '', 'YouTube|Lägg upp på YouTube.')}
     ${!lib && host.available ? b('reveal', 'folder', inModal ? 'Visa i mappen' : '', 'Visa i mappen|Öppna Utforskaren vid filen.') : ''}
     ${b('remove', 'trash', '', 'Ta bort|Radera klippet.', 'btn-danger')}
