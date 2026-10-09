@@ -12,6 +12,9 @@ export const WARPS = [
   { id: 'bigNose', name: 'Potatisnäsa', icon: '👃', desc: 'Förstorad näsa i clownstil.' },
   { id: 'hamster', name: 'Hamsterkinder', icon: '🐹', desc: 'Runda, fyllda kinder.' },
   { id: 'slim', name: 'Smalt ansikte', icon: '💎', desc: 'Smalare kinder och käke.' },
+  { id: 'bigForehead', name: 'Jättepanna', icon: '🧠', desc: 'En panna full av hjärnkapacitet.' },
+  { id: 'longChin', name: 'Långhaka', icon: '🌙', desc: 'Hakan sträcks ut som en halvmåne.' },
+  { id: 'tinyEyes', name: 'Knappnålsögon', icon: '🔍', desc: 'Pyttesmå ögon – väldigt misstänksam.' },
 ];
 
 const P = {
@@ -76,8 +79,30 @@ export function computeWarps(id, strength, face) {
       add(g(P.jawR), 0.7, -0.38);
       add(g(P.jawL), 0.7, -0.38);
       break;
+    case 'bigForehead': {
+      const f = g(P.forehead);
+      const b = g(P.bridge);
+      add([f[0] + (f[0] - b[0]) * 0.25, f[1] + (f[1] - b[1]) * 0.25], 1.3, 0.62);
+      break;
+    }
+    case 'longChin':
+      add(g(P.chin), 0.95, 0.7);
+      break;
+    case 'tinyEyes':
+      add(g(P.irisR), 0.5, -0.65);
+      add(g(P.irisL), 0.5, -0.65);
+      break;
     default:
       break;
+  }
+  return out;
+}
+
+/** Flera förvrängningar samtidigt (lager), max MAX_WARPS punkter totalt. */
+export function computeAllWarps(ids, strength, face) {
+  const out = [];
+  for (const id of ids) {
+    for (const w of computeWarps(id, strength, face)) if (out.length < MAX_WARPS) out.push(w);
   }
   return out;
 }

@@ -92,7 +92,7 @@ export class ArLayer {
   _place(item) {
     const av = this.attachedTo;
     if (av) {
-      const crown = ['head', 'above'].includes(item.slot);
+      const crown = ['head', 'above', 'hair'].includes(item.slot);
       av.anchorFor(item.slot).add(item.group);
       if (crown) item.offset.position.set(0, -HEAD.crownY, -HEAD.crownZ);
       else item.offset.position.set(0, 0, 0);

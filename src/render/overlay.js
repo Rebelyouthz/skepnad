@@ -2,6 +2,7 @@
 // chattnotiser, serietidningstexter och VHS-OSD.
 import * as THREE from 'three';
 import { FULLSCREEN_VERT, QuadPass } from './glsl.js';
+import { StickerLayer } from './stickers.js';
 
 const FRAG = /* glsl */ `
 uniform sampler2D tOverlay;
@@ -39,6 +40,7 @@ export class Overlay {
     );
     this.pops = [];
     this.alerts = [];
+    this.stickers = new StickerLayer();
     this.caption = { text: '', final: true, at: 0 };
     this.lower = { key: '', t: 0 };
     this.liveSince = performance.now();
@@ -68,7 +70,7 @@ export class Overlay {
     this.caption = { text, final, at: performance.now() };
   }
 
-  update(dt, t, st, { vhs = false } = {}) {
+  update(dt, t, st, { vhs = false, face = null } = {}) {
     const g = this.ctx;
     const { W, H, s } = this;
     const ov = st.overlays;
@@ -77,10 +79,17 @@ export class Overlay {
     const showCap = ov.captions.enabled && this.caption.text && capAge < 4.5;
     this.pops = this.pops.filter((p) => (p.t += dt) < 1.1);
     this.alerts = this.alerts.filter((a) => (a.t += dt) < 5);
-    const any = lt.enabled || ov.live || ov.clock || showCap || this.pops.length || this.alerts.length || vhs || ov.frame === 'neon';
+    const stickers = st.stickers?.items ?? [];
+    const hasStickers = stickers.some((i) => !i.hidden);
+    const any = hasStickers || lt.enabled || ov.live || ov.clock || showCap || this.pops.length || this.alerts.length || vhs || ov.frame === 'neon';
     this.visible = any;
-    if (!any) return;
+    if (!any) {
+      this.stickers.bounds = [];
+      return;
+    }
     g.clearRect(0, 0, W, H);
+    if (hasStickers) this.stickers.draw(g, stickers, { W, H, face, t, dt });
+    else this.stickers.bounds = [];
 
     if (ov.frame === 'neon') this._neonFrame(g, t);
 

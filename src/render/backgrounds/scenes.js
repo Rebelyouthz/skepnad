@@ -2,6 +2,8 @@
 // i sRGB. Tillgängligt: uTime, uRes, uAudio (0..1), P(djup) = parallaxförskjutning,
 // ASP = bildförhållande, samt brus-/hashfunktioner från glsl.js.
 
+import { MORE_SCENES } from './scenesMore.js';
+
 export const SCENES = [
   {
     id: 'cabin',
@@ -748,4 +750,5 @@ vec3 scene(vec2 uv) {
   },
 ];
 
+SCENES.push(...MORE_SCENES);
 export const SCENE_MAP = Object.fromEntries(SCENES.map((s) => [s.id, s]));

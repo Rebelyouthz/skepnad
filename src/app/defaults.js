@@ -63,10 +63,12 @@ export const DEFAULTS = {
     beauty: 0.25,
     lightWrap: 0.6,
     relight: 0.5,
+    extra: [], // filterlager ovanpå huvudfiltret: { id, intensity, on }
   },
   face: {
     accessories: [],
     warp: 'none',
+    warps: [], // extra förvrängningar samtidigt
     warpStrength: 0.85,
   },
   avatar: {
@@ -110,7 +112,7 @@ export const DEFAULTS = {
   soundboard: { volume: 0.7, toStream: true, custom: [] },
   ambience: { enabled: false, volume: 0.35, toStream: false },
   overlays: {
-    lowerThird: { enabled: false, name: 'Ditt namn', title: 'Live just nu', style: 'glass' },
+    lowerThird: { enabled: false, name: 'Ditt namn', title: 'Live just nu', style: 'glass', byPersona: false },
     captions: { enabled: false, lang: 'sv-SE' },
     clock: false,
     live: false,
@@ -131,6 +133,7 @@ export const DEFAULTS = {
     },
   },
   personas: { active: 'cozy', custom: [] },
+  stickers: { items: [], recent: [] },
   ui: {
     sounds: true,
     soundVolume: 0.55,

@@ -1,6 +1,15 @@
 // Geometrihjälpare för procedurella 3D-föremål.
 import * as THREE from 'three';
 
+/** Ansiktets mått i AR-enheter (1 = avståndet mellan ögonens yttre hörn). */
+export const HEAD = {
+  crownY: 1.0,
+  crownZ: -0.78,
+  crownR: 0.66,
+  noseTip: [0, -0.47, 0.42],
+  eyeX: 0.33,
+};
+
 /** Rör längs en kurva med avsmalnande radie (horn, mustasch, luva…). */
 export function taperedTube(points, r0, r1, { radial = 14, segs = 40, ease = (t) => t, capStart = true } = {}) {
   const curve = new THREE.CatmullRomCurve3(points.map((p) => new THREE.Vector3(...p)));

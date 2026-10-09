@@ -331,6 +331,8 @@ vec3 applyFilter(vec2 uv) { return S(uv); }
 const FRAG = /* glsl */ `
 uniform sampler2D tBg;
 uniform sampler2D tFg;
+uniform sampler2D tPrev;
+uniform float uStack;
 uniform sampler2D tAscii;
 uniform vec2 uRes;
 uniform float uTime;
@@ -356,6 +358,7 @@ vec3 compLin(vec2 uv) {
   return f.rgb + texture2D(tBg, uv).rgb * (1.0 - f.a);
 }
 vec3 S(vec2 uv) {
+  if (uStack > 0.5) return texture2D(tPrev, uv).rgb;
   if (uFilterAll > 0.5) return linearToSrgb(compLin(uv));
   vec4 f = texture2D(tFg, uv);
   return linearToSrgb(f.a > 0.0001 ? f.rgb / f.a : vec3(0.0));
@@ -384,7 +387,7 @@ void main() {
   c = (c - 0.5) * (1.0 + uContrast * 0.8) + 0.5;
   c = mix(vec3(luma(c)), c, 1.0 + uSaturation);
   c *= vec3(1.0 + uWarmth * 0.09, 1.0 + uWarmth * 0.015, 1.0 - uWarmth * 0.11);
-  if (uFilterAll < 0.5) {
+  if (uFilterAll < 0.5 && uStack < 0.5) {
     float a = fgA(uv);
     c = mix(linearToSrgb(texture2D(tBg, uv).rgb), c, a);
   }
@@ -425,6 +428,8 @@ export class PostPass {
     this.uniforms = {
       tBg: { value: null },
       tFg: { value: null },
+      tPrev: { value: null },
+      uStack: { value: 0 },
       tAscii: { value: makeAsciiAtlas() },
       uRes: { value: new THREE.Vector2(1280, 720) },
       uTime: { value: 0 },

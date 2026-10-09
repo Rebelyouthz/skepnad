@@ -4,9 +4,20 @@ import { Rig } from './rig.js';
 import { BUILTIN_AVATARS } from './builtin.js';
 import { PngTuber } from './pngtuber.js';
 import { CustomAvatar } from './custom.js';
+import { CRITTER_AVATARS } from './critters.js';
+import { TOON_AVATARS } from './toon.js';
 
-export const AVATAR_TYPES = [...BUILTIN_AVATARS, PngTuber, CustomAvatar];
-export const AVATAR_LIST = AVATAR_TYPES.map((A) => ({ ...A.meta, defaults: A.defaults }));
+export const AVATAR_TYPES = [...BUILTIN_AVATARS, ...CRITTER_AVATARS, ...TOON_AVATARS, PngTuber, CustomAvatar];
+const DEFAULT_GROUP = { robot: 'fantasy', cat: 'animals', ghost: 'spooky', alien: 'fantasy', blob: 'fantasy', bear: 'animals', pumpkin: 'spooky', png: 'own', custom: 'own' };
+export const AVATAR_GROUPS = [
+  { id: 'animals', name: 'Djur', icon: '🐾' },
+  { id: 'famous', name: 'Kändisar & kungligheter', icon: '⭐' },
+  { id: 'people', name: 'Äventyr & yrken', icon: '🧭' },
+  { id: 'fantasy', name: 'Fantasi & robotar', icon: '🦄' },
+  { id: 'spooky', name: 'Läskiga & galna', icon: '👻' },
+  { id: 'own', name: 'Egna figurer', icon: '📁' },
+];
+export const AVATAR_LIST = AVATAR_TYPES.map((A) => ({ ...A.meta, group: A.meta.group ?? DEFAULT_GROUP[A.meta.id] ?? 'fantasy', defaults: A.defaults }));
 
 export class AvatarLayer {
   constructor() {
@@ -18,9 +29,9 @@ export class AvatarLayer {
     this.fill = new THREE.DirectionalLight(0xbfd4ff, 0.45);
     this.fill.position.set(3, 1, 3);
     this.rim = new THREE.DirectionalLight(0xffffff, 1.6);
-    this.rim.position.set(2.5, 2.5, -3);
+    this.rim.position.set(2.6, 1.3, -3.4);
     this.rim2 = new THREE.DirectionalLight(0xffffff, 0.9);
-    this.rim2.position.set(-3, 1, -2.5);
+    this.rim2.position.set(-3, 0.6, -2.8);
     this.scene.add(this.hemi, this.key, this.fill, this.rim, this.rim2);
     this.holder = new THREE.Group();
     this.scene.add(this.holder);

@@ -38,6 +38,7 @@ export function initTooltips(isEnabled = () => true) {
     target = null;
   };
   document.addEventListener('pointerover', (e) => {
+    if (e.pointerType === 'touch') return;
     const el = e.target.closest?.('[data-tip]');
     if (el === target) return;
     hide();
@@ -45,7 +46,37 @@ export function initTooltips(isEnabled = () => true) {
     target = el;
     timer = setTimeout(() => show(el), 320);
   });
-  document.addEventListener('pointerdown', hide);
+  // Mobil: håll inne en knapp en stund för att se förklaringen
+  let lp = null;
+  document.addEventListener('pointerdown', (e) => {
+    hide();
+    clearTimeout(lp);
+    if (e.pointerType !== 'touch') return;
+    const el = e.target.closest?.('[data-tip]');
+    if (!el || !isEnabled()) return;
+    lp = setTimeout(() => {
+      target = el;
+      show(el);
+      el.dataset.longpress = '1';
+      navigator.vibrate?.(12);
+      setTimeout(hide, 2600);
+    }, 520);
+  });
+  const cancelLp = () => clearTimeout(lp);
+  document.addEventListener('pointerup', cancelLp);
+  document.addEventListener('pointercancel', cancelLp);
+  document.addEventListener(
+    'click',
+    (e) => {
+      const el = e.target.closest?.('[data-longpress]');
+      if (el) {
+        delete el.dataset.longpress;
+        e.stopPropagation();
+        e.preventDefault();
+      }
+    },
+    true,
+  );
   document.addEventListener('scroll', hide, true);
   document.addEventListener('focusin', (e) => {
     const el = e.target.closest?.('[data-tip]');
@@ -59,6 +90,7 @@ export function initTooltips(isEnabled = () => true) {
 export function initTilt(isEnabled = () => true) {
   let active = null;
   document.addEventListener('pointermove', (e) => {
+    if (e.pointerType === 'touch') return;
     const el = e.target.closest?.('.card, .p-card');
     if (active && active !== el) {
       active.style.setProperty('--rx', '0deg');
@@ -82,7 +114,11 @@ export function initTilt(isEnabled = () => true) {
 export function initStageTilt(stage, isEnabled = () => true) {
   let raf = 0;
   document.addEventListener('pointermove', (e) => {
-    if (!isEnabled() || document.body.classList.contains('clean')) return;
+    const off = e.pointerType === 'touch' || !isEnabled() || ['clean', 'mobile', 'dragging'].some((c) => document.body.classList.contains(c));
+    if (off) {
+      if (stage.style.transform) stage.style.transform = '';
+      return;
+    }
     cancelAnimationFrame(raf);
     raf = requestAnimationFrame(() => {
       const r = stage.getBoundingClientRect();
@@ -96,7 +132,21 @@ export function initStageTilt(stage, isEnabled = () => true) {
 // ---------- UI-ljud ----------
 export function initUiSounds() {
   let last = null;
+  // Neonvåg där man trycker + kort vibration på mobilen
+  document.addEventListener('pointerdown', (e) => {
+    const el = e.target.closest?.('.btn, .card, .p-card, .m-tool, .cap-btn, .seg button, .rail button, .chipbtn');
+    if (!el || el.disabled) return;
+    const r = el.getBoundingClientRect();
+    const rip = document.createElement('span');
+    rip.className = 'ripple';
+    rip.style.left = `${e.clientX - r.left}px`;
+    rip.style.top = `${e.clientY - r.top}px`;
+    el.appendChild(rip);
+    setTimeout(() => rip.parentNode?.removeChild(rip), 650);
+    if (e.pointerType === 'touch') navigator.vibrate?.(6);
+  });
   document.addEventListener('pointerover', (e) => {
+    if (e.pointerType === 'touch') return;
     const el = e.target.closest?.('button, .card, .p-card, .switch, select, .dropzone');
     if (el && el !== last && !el.disabled) uiSounds.play('hover');
     last = el;
@@ -104,7 +154,7 @@ export function initUiSounds() {
   document.addEventListener('click', (e) => {
     const el = e.target.closest?.('button');
     if (!el || el.dataset.silent !== undefined || el.closest('[data-seg]')) return;
-    if (el.closest('.rail')) uiSounds.play('tab');
+    if (el.closest('.rail, .m-tools')) uiSounds.play('tab');
     else if (el.classList.contains('card') || el.classList.contains('p-card')) uiSounds.play('select');
     else uiSounds.play('click');
   });
@@ -165,13 +215,13 @@ export function openModal({ title, iconName = 'info', tabs = null, content = '',
 }
 
 /** Enkel inmatningsdialog. */
-export function promptModal({ title, label, value = '', placeholder = '', okText = 'Spara' }) {
+export function promptModal({ title, label, value = '', placeholder = '', okText = 'Spara', maxlength = 40, iconName = 'save' }) {
   return new Promise((resolve) => {
     let done = false;
     const close = openModal({
       title,
-      iconName: 'save',
-      content: `<div class="field"><label>${label}</label><input type="text" value="${value.replace(/"/g, '&quot;')}" placeholder="${placeholder}" maxlength="40"></div>
+      iconName,
+      content: `<div class="field"><label>${label}</label><input type="text" value="${value.replace(/"/g, '&quot;')}" placeholder="${placeholder}" maxlength="${maxlength}"></div>
         <div class="row" style="justify-content:flex-end"><button class="btn" data-close style="flex:none">Avbryt</button><button class="btn btn-primary" data-ok style="flex:none">${okText}</button></div>`,
       onMount(root, closeFn) {
         const input = root.querySelector('input');

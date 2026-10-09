@@ -198,6 +198,94 @@ const AMBIENCES = {
     ev((t) => blip(ctx, out, t, { type: 'square', f: 800 + Math.floor(Math.random() * 8) * 220, dur: 0.04, peak: 0.02 }), 120, 700);
     return nodes;
   },
+  hall(ctx, out, ev, nb) {
+    const n = noiseSource(ctx, 'pink');
+    const g = gain(ctx, 0.1);
+    n.connect(filt(ctx, 'lowpass', 220)).connect(g).connect(out);
+    n.start();
+    const nodes = pad(ctx, out, [65.4, 98, 130.8], { cutoff: 380, level: 0.018, type: 'triangle' });
+    ev((t) => {
+      for (let i = 0; i < 2; i++) click(ctx, out, t + i * 0.55, { f: 300, dur: 0.08, peak: 0.05, noiseBuf: nb });
+    }, 6000, 14000);
+    return [n, ...nodes];
+  },
+  crowd(ctx, out, ev, nb) {
+    const n = noiseSource(ctx, 'pink');
+    const bp = filt(ctx, 'bandpass', 700, 0.6);
+    const g = gain(ctx, 0.35);
+    n.connect(bp).connect(g).connect(out);
+    n.start();
+    lfo(ctx, 0.17, 0.12, g.gain);
+    lfo(ctx, 0.11, 250, bp.frequency);
+    ev((t) => {
+      const s = ctx.createBufferSource();
+      s.buffer = nb;
+      s.loop = true;
+      const f = filt(ctx, 'bandpass', 1400, 0.5);
+      const cg = ctx.createGain();
+      cg.gain.setValueAtTime(0.0001, t);
+      cg.gain.linearRampToValueAtTime(0.22, t + 0.6);
+      cg.gain.linearRampToValueAtTime(0.0001, t + 2.8);
+      s.connect(f).connect(cg).connect(out);
+      s.start(t);
+      s.stop(t + 3);
+      for (let i = 0; i < 40; i++) click(ctx, out, t + 0.3 + Math.random() * 2.2, { f: 1800, dur: 0.012, peak: 0.05 + Math.random() * 0.08, noiseBuf: nb });
+    }, 6000, 15000);
+    return [n];
+  },
+  press(ctx, out, ev, nb) {
+    const nodes = AMBIENCES.room(ctx, out);
+    const n = noiseSource(ctx, 'pink');
+    const g = gain(ctx, 0.07);
+    n.connect(filt(ctx, 'bandpass', 600, 0.8)).connect(g).connect(out);
+    n.start();
+    ev((t) => {
+      const k = 1 + Math.floor(Math.random() * 3);
+      for (let i = 0; i < k; i++) {
+        click(ctx, out, t + i * 0.11, { f: 2500, dur: 0.02, peak: 0.16, noiseBuf: nb });
+        click(ctx, out, t + i * 0.11 + 0.045, { f: 1200, dur: 0.03, peak: 0.1, noiseBuf: nb });
+      }
+    }, 800, 3200);
+    return [...nodes, n];
+  },
+  paparazzi(ctx, out, ev, nb) {
+    const nodes = AMBIENCES.crowd(ctx, out, () => {}, nb);
+    ev((t) => {
+      const k = 2 + Math.floor(Math.random() * 5);
+      for (let i = 0; i < k; i++) {
+        const tt = t + i * (0.07 + Math.random() * 0.1);
+        click(ctx, out, tt, { f: 2800, dur: 0.018, peak: 0.18, noiseBuf: nb });
+        click(ctx, out, tt + 0.04, { f: 1300, dur: 0.025, peak: 0.12, noiseBuf: nb });
+      }
+      if (Math.random() < 0.3) blip(ctx, out, t, { f: 3000, f2: 9000, dur: 0.35, peak: 0.012 });
+    }, 300, 1400);
+    return nodes;
+  },
+  waves(ctx, out, ev) {
+    const n = noiseSource(ctx, 'brown');
+    const lp = filt(ctx, 'lowpass', 500);
+    const g = gain(ctx, 0.5);
+    n.connect(lp).connect(g).connect(out);
+    n.start();
+    lfo(ctx, 0.09, 0.4, g.gain);
+    lfo(ctx, 0.09, 350, lp.frequency);
+    const w = noiseSource(ctx, 'pink');
+    const hp = filt(ctx, 'highpass', 2500);
+    const wg = gain(ctx, 0.1);
+    w.connect(hp).connect(wg).connect(out);
+    w.start();
+    lfo(ctx, 0.09, 0.09, wg.gain);
+    ev((t) => {
+      for (let i = 0; i < 2 + Math.floor(Math.random() * 2); i++) blip(ctx, out, t + i * 0.32, { f: 2400, f2: 1300, dur: 0.25, peak: 0.025 });
+    }, 5000, 12000);
+    return [n, w];
+  },
+  neonrain(ctx, out, ev) {
+    const nodes = AMBIENCES.rain(ctx, out, ev);
+    nodes.push(...pad(ctx, out, [55, 82.4], { cutoff: 260, level: 0.02, type: 'square' }));
+    ev((t) => blip(ctx, out, t, { type: 'square', f: 440 * 2 ** (Math.floor(Math.random() * 12) / 12), dur: 0.12, peak: 0.012 }), 1500, 5000);
+    return nodes;
+  },
   room(ctx, out) {
     const n = noiseSource(ctx, 'pink');
     const g = gain(ctx, 0.12);

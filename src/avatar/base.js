@@ -101,7 +101,7 @@ export class AvatarBase {
   }
 
   anchorFor(slot) {
-    return ['head', 'above'].includes(slot) ? this.anchorCrown : this.anchorFace;
+    return ['head', 'above', 'hair'].includes(slot) ? this.anchorCrown : this.anchorFace;
   }
 
   applyRig(rig, dt, t) {

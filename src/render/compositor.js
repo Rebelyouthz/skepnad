@@ -5,10 +5,10 @@ import { ViewTransform } from './view.js';
 import { BackgroundLayer } from './backgrounds/layer.js';
 import { SCENE_MAP } from './backgrounds/scenes.js';
 import { PersonLayer, MAX_WARPS } from './person.js';
-import { PostPass } from './filters.js';
+import { PostPass, FILTER_MAP } from './filters.js';
 import { QuadPass } from './glsl.js';
 import { Blur, makeRT } from './blur.js';
-import { computeWarps } from './faceWarp.js';
+import { computeAllWarps } from './faceWarp.js';
 import { ArLayer } from './ar/arLayer.js';
 import { Particles } from './fx/particles.js';
 import { Throwables } from './fx/throwables.js';
@@ -58,6 +58,7 @@ export class Compositor {
     this.videoTex.generateMipmaps = false;
 
     this.shakeState = { amp: 0, dir: 0, x: 0, y: 0 };
+    this._rollEuler = new THREE.Euler();
     this.parallax = new THREE.Vector2();
     this.audioSmooth = 0;
     this.tint = '#ffffff';
@@ -81,6 +82,9 @@ export class Compositor {
     this.renderer.setSize(w, h, false);
     this.bgRT?.dispose();
     this.fgRT?.dispose();
+    this.stackA?.dispose();
+    this.stackB?.dispose();
+    this.stackA = this.stackB = null;
     this.bgRT = makeRT(w, h);
     this.fgRT = makeRT(w, h, { depthBuffer: true, samples: Q.samples });
     this.camBlur.setSize(w, h);
@@ -132,6 +136,18 @@ export class Compositor {
     if (!f.present) return { x: W / 2, y: H * 0.62, unit: H * 0.14, present: false };
     const p = this.view.videoToScreen(f.eyeMid.x, f.eyeMid.y);
     return { x: p.x * W, y: (1 - p.y) * H, unit: this.view.videoPxToOutPx(f.unitPx), present: true };
+  }
+
+  /** Ansiktets ankare för klistermärken: position, enhet och lutning (radianer, moturs). */
+  stickerAnchor(mode) {
+    const a = this.faceAnchor(mode);
+    let roll = 0;
+    if (mode === 'avatar') roll = this.avatar.rig.euler.z;
+    else if (this.tracker.face.present) {
+      const e = this._rollEuler.setFromQuaternion(this.tracker.face.quat, 'YXZ');
+      roll = this.view.mirror ? -e.z : e.z;
+    }
+    return { ...a, roll };
   }
 
   mouthAnchor(mode) {
@@ -265,7 +281,8 @@ export class Compositor {
       const mx = Math.max(tc.r, tc.g, tc.b, 0.001);
       const k = useMask && bgType === 'scene' ? f.relight * 0.22 : 0;
       pm.uRelight.value.set(1 + (tc.r / mx - 1) * k, 1 + (tc.g / mx - 1) * k, 1 + (tc.b / mx - 1) * k);
-      const warps = computeWarps(s.face.warp, s.face.warpStrength, face);
+      const warpIds = [s.face.warp, ...(s.face.warps || [])].filter((w, i, a) => w && w !== 'none' && a.indexOf(w) === i);
+      const warps = computeAllWarps(warpIds, s.face.warpStrength, face);
       pm.uWarpCount.value = warps.length;
       for (let i = 0; i < MAX_WARPS; i++) pm.uWarp.value[i].set(...(warps[i] ?? [0, 0, 0, 0]));
       pm.uShake.value.set(sh.x, sh.y);
@@ -311,13 +328,17 @@ export class Compositor {
     u.uFlash.value = Math.max(0, u.uFlash.value - dt * 3);
     u.uGlitchBoost.value = Math.max(0, u.uGlitchBoost.value - dt * 1.5);
     this.post.setFilter(s.filter.id);
-    r.setRenderTarget(null);
-    r.setClearColor(0x000000, 1);
-    r.clear(true, false, false);
-    this.post.render(r, null);
+    const extras = (s.filter.extra || []).filter((e) => e && e.on !== false && e.id !== 'none' && FILTER_MAP[e.id]);
+    if (extras.length) this._renderStack(r, extras, s.filter.id, W, H);
+    else {
+      r.setRenderTarget(null);
+      r.setClearColor(0x000000, 1);
+      r.clear(true, false, false);
+      this.post.render(r, null);
+    }
 
     // ---- 4. Overlay
-    this.overlay.update(dt, t, s, { vhs: s.filter.id === 'vhs' });
+    this.overlay.update(dt, t, s, { vhs: s.filter.id === 'vhs' || (s.filter.extra || []).some((e) => e.id === 'vhs' && e.on !== false), face: s.stickers?.items?.length ? this.stickerAnchor(mode) : null });
     this.overlay.render(r);
 
     if (this._wantShot) {
@@ -325,6 +346,38 @@ export class Compositor {
       this._wantShot = null;
       this.canvas.toBlob((b) => done(b), 'image/png');
     }
+  }
+
+  /** Filterlager: huvudfiltret till en buffert, sedan varje extra filter ovanpå. */
+  _renderStack(r, extras, mainId, W, H) {
+    this.stackA ??= makeRT(W, H, { type: THREE.UnsignedByteType });
+    this.stackB ??= makeRT(W, H, { type: THREE.UnsignedByteType });
+    const u = this.post.uniforms;
+    this.post.render(r, this.stackA);
+    const keys = ['uBrightness', 'uContrast', 'uSaturation', 'uWarmth', 'uVignette', 'uGrain', 'uSharpen', 'uLetterbox', 'uFlash', 'uGlitchBoost'];
+    const saved = keys.map((k) => u[k].value);
+    const keepInt = u.uIntensity.value;
+    keys.forEach((k) => (u[k].value = 0));
+    u.uStack.value = 1;
+    let src = this.stackA;
+    let dst = this.stackB;
+    extras.forEach((e, i) => {
+      const last = i === extras.length - 1;
+      u.tPrev.value = src.texture;
+      u.uIntensity.value = e.intensity ?? 1;
+      this.post.setFilter(e.id);
+      if (last) {
+        r.setRenderTarget(null);
+        r.setClearColor(0x000000, 1);
+        r.clear(true, false, false);
+      }
+      this.post.render(r, last ? null : dst);
+      [src, dst] = [dst, src];
+    });
+    u.uStack.value = 0;
+    u.uIntensity.value = keepInt;
+    keys.forEach((k, i) => (u[k].value = saved[i]));
+    this.post.setFilter(mainId);
   }
 
   // ---------- Miniatyrer (atlas + en enda pixelavläsning) ----------

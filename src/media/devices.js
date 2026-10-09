@@ -14,12 +14,16 @@ export class Devices {
     return !!this.cameraStream?.getVideoTracks().some((t) => t.readyState === 'live');
   }
 
-  async startCamera(deviceId = '', quality = 'balanced') {
+  /** facing: 'user' (selfie) eller 'environment' (bakre kameran) – används när inget deviceId är valt. */
+  async startCamera(deviceId = '', quality = 'balanced', facing = 'user') {
     this.stopCamera();
-    const size = quality === 'high' ? { width: 1920, height: 1080 } : { width: 1280, height: 720 };
+    let size = quality === 'high' ? { width: 1920, height: 1080 } : { width: 1280, height: 720 };
+    // Telefon i stående läge: be om stående bild så att inget beskärs i onödan
+    if (matchMedia('(pointer: coarse)').matches && innerHeight > innerWidth) size = { width: size.height, height: size.width };
     const constraints = {
       video: {
         deviceId: deviceId ? { exact: deviceId } : undefined,
+        facingMode: deviceId ? undefined : { ideal: facing },
         width: { ideal: size.width },
         height: { ideal: size.height },
         frameRate: { ideal: 30 },
@@ -30,9 +34,10 @@ export class Devices {
     try {
       stream = await navigator.mediaDevices.getUserMedia(constraints);
     } catch (err) {
-      if (deviceId && err.name === 'OverconstrainedError') return this.startCamera('', quality);
+      if (deviceId && err.name === 'OverconstrainedError') return this.startCamera('', quality, facing);
       throw err;
     }
+    this.facing = stream.getVideoTracks()[0]?.getSettings?.().facingMode || facing;
     this.cameraStream = stream;
     this.video.srcObject = stream;
     await this.video.play().catch(() => {});

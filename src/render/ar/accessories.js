@@ -3,13 +3,9 @@
 import * as THREE from 'three';
 import { taperedTube, heartShape, wrapZ, canvasTexture, MAT } from './geometry.js';
 
-export const HEAD = {
-  crownY: 1.0,
-  crownZ: -0.78,
-  crownR: 0.66,
-  noseTip: [0, -0.47, 0.42],
-  eyeX: 0.33,
-};
+import { MORE_ACCESSORIES } from './accessoriesMore.js';
+import { HEAD } from './geometry.js';
+export { HEAD };
 
 // Full spegling i x: M·(T·R·S) ⇒ x-position, y/z-rotation och x-skala byter tecken.
 const mirrorX = (obj) => {
@@ -719,6 +715,7 @@ export const ACCESSORIES = [
   { id: 'monocle', name: 'Monokel', icon: '🧐', slot: 'eye1', desc: 'Guldmonokel med kedja. Mycket distingerat.', build: buildMonocle },
   { id: 'headset', name: 'Gamer-headset', icon: '🎧', slot: 'ears', desc: 'Headset med RGB-ringar som pulserar med rösten.', build: buildHeadset },
   { id: 'spaceHelmet', name: 'Rymdhjälm', icon: '🧑‍🚀', slot: 'helmet', desc: 'Glaskupa med skimrande kant – redo för rymdpromenad.', build: buildSpaceHelmet },
+  ...MORE_ACCESSORIES,
 ];
 export const ACCESSORY_MAP = Object.fromEntries(ACCESSORIES.map((a) => [a.id, a]));
 
@@ -727,7 +724,7 @@ export function toggleAccessory(list, id) {
   const def = ACCESSORY_MAP[id];
   if (!def) return list;
   if (list.includes(id)) return list.filter((x) => x !== id);
-  const exclusive = ['head', 'eyes'];
+  const exclusive = ['head', 'eyes', 'beard'];
   const kept = exclusive.includes(def.slot) ? list.filter((x) => ACCESSORY_MAP[x]?.slot !== def.slot) : list;
   return [...kept, id];
 }

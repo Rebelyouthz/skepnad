@@ -2,10 +2,14 @@
 <html lang="sv">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#06050c" />
-    <title>Skepnad – live-avatar & röststudio</title>
-    <meta name="description" content="Bli vem du vill – live. Avatarer, röstförvrängning, levande bakgrunder, filter och AR för streaming." />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+    <meta name="theme-color" content="#050409" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Skepnad" />
+    <title>Skepnad – bli vem du vill, live</title>
+    <meta name="description" content="Se ut och låt som vem du vill – live. Tecknade figurer, kungar, presidenter, monster, röstförvrängning, levande platser, emojis, filterlager och inspelning. Funkar i datorn och mobilen." />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -23,22 +27,13 @@
     <section class="splash" id="splash">
       <div class="splash-inner">
         <canvas class="splash-logo" id="splash-logo" aria-hidden="true"></canvas>
-        <h1 class="wordmark">SKEPNAD</h1>
+        <h1 class="wordmark-cyber" data-text="SKEPNAD">SKEPNAD</h1>
         <p class="tagline">Bli <b>vem du vill</b>. Se ut och låt som någon annan – live.</p>
-        <div class="feature-chips">
-          <span><b>11</b> levande platser</span>
-          <span><b>21</b> röster</span>
-          <span><b>7</b> 3D-avatarer + VRM</span>
-          <span><b>20</b> AR-tillbehör</span>
-          <span><b>19</b> filter</span>
-          <span><b>16</b> ljudeffekter</span>
-        </div>
+        <div class="feature-chips" id="feature-chips"></div>
         <div class="cta" id="cta">
-          <button class="btn btn-primary big" data-start="full" data-tip="Starta|Kameran och mikrofonen startas. Webbläsaren frågar om lov första gången.">
-            Starta kamera &amp; mikrofon
-          </button>
+          <button class="btn btn-primary big" data-start="full" data-tip="Starta|Kameran och mikrofonen startas. Webbläsaren frågar om lov första gången.">Starta kamera &amp; mikrofon</button>
           <div class="cta-row">
-            <button class="btn" data-start="avatar" data-tip="Bara mikrofon|Utan kamera: välj en avatar – munnen följer din röst.">Bara mikrofon (avatar)</button>
+            <button class="btn" data-start="avatar" data-tip="Bara mikrofon|Utan kamera: välj en figur – munnen följer din röst.">Bara mikrofon</button>
             <button class="btn btn-ghost" data-start="demo" data-tip="Demoläge|Utforska appen utan kamera och mikrofon. En demoröst pratar åt dig.">Demoläge</button>
           </div>
         </div>
@@ -46,16 +41,13 @@
           <div class="track"><div class="fill" id="loadfill"></div></div>
           <p id="loadtext">Förbereder…</p>
         </div>
-        <p class="privacy">🔒 Allt körs lokalt i din dator – ingen bild eller ljud skickas någonstans.</p>
+        <p class="privacy">🔒 Allt körs i din egen enhet – ingen bild eller ljud skickas någonstans.</p>
       </div>
     </section>
 
     <div class="app" id="app" hidden>
       <header class="topbar">
-        <div class="brand" data-tip="Skepnad|Live-avatar, röstförvrängare och kamerafilter för streaming.">
-          <canvas id="brand-logo" aria-hidden="true"></canvas>
-          <div class="brand-text"><b>SKEPNAD</b><span>LIVE STUDIO</span></div>
-        </div>
+        <div class="brand" id="brand" data-tip="Skepnad|Live-figurer, röstförvrängare, emojis och filter för streaming, samtal och klipp."></div>
         <div class="status" id="status"></div>
         <div class="actions" id="actions"></div>
       </header>
@@ -64,16 +56,31 @@
         <div class="stage-wrap">
           <div class="stage" id="stage">
             <canvas id="out" aria-label="Förhandsvisning av sändningen"></canvas>
+            <div class="hud" aria-hidden="true"><i></i><i></i><i></i><i></i><b>SKEPNAD // LIVE FEED</b></div>
             <div class="reflection"></div>
             <div class="stage-badges" id="stage-badges"></div>
             <div class="stage-hint fade" id="stage-hint"></div>
+            <div class="sticker-sel" id="sticker-sel" hidden></div>
+            <div class="countdown" id="countdown" hidden></div>
+            <div class="flashfx" id="flashfx"></div>
+            <div class="m-top" id="m-top"></div>
+            <div class="m-tools" id="m-tools"></div>
+            <div class="m-bottom" id="m-bottom"></div>
           </div>
         </div>
         <div class="quickbar" id="quickbar"></div>
-        <div class="dock" id="dock" aria-label="Skepnader"></div>
+        <div class="dock-wrap">
+          <div class="dock-cats" id="dock-cats"></div>
+          <div class="dock" id="dock" aria-label="Skepnader"></div>
+        </div>
       </main>
       <aside class="panel" id="panel">
-        <div class="panel-head"><h2 id="panel-title"></h2><p id="panel-sub"></p></div>
+        <div class="sheet-handle" id="sheet-handle" aria-hidden="true"></div>
+        <div class="panel-head">
+          <h2 id="panel-title"></h2>
+          <p id="panel-sub"></p>
+          <button class="btn icon-only sheet-close" data-action="closeSheet" aria-label="Stäng" data-tip="Stäng|Stäng panelen."></button>
+        </div>
         <div class="panel-body" id="panel-body"></div>
       </aside>
     </div>

@@ -73,6 +73,8 @@ window.skepnad = {
   audio,
   tracker,
   host,
+  avatars: AVATAR_LIST,
+  scenes: SCENES,
   live,
   get calls() {
     return callBridge;

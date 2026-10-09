@@ -1,34 +1,125 @@
-// Lucide-ikoner (bara de som används, för liten bundle).
-import {
-  createElement,
-  Drama, Bot, Image, WandSparkles, Glasses, AudioWaveform, Drum, PartyPopper, Layers, RadioTower, Settings, Circle,
-  Camera, ExternalLink, EyeOff, Eye, Volume2, VolumeX, CircleQuestionMark, Mic, MicOff, Video, VideoOff, Sparkles, User,
-  Save, Trash, Upload, Play, Square, X, Check, Keyboard, Lock, Info, Zap, SlidersHorizontal, Palette, Music, Headphones,
-  Cast, Maximize, RefreshCcw, Heart, Flame, Tv, ScanFace, Mountain, Film, MessageSquare, Clock, Radio, MonitorUp, Hand,
-  Wand, Download, Gauge, Shuffle, Plus, CircleDot, Rocket, Gamepad2, Crown, Cpu, Activity, Ghost, ChevronRight,
-  ChevronLeft, Captions, Frame, ScanEye, Wifi, WifiOff, Theater, Send, Signal, ImagePlus, Box, Sun, Contrast, Droplets,
-  Thermometer, Crosshair, MousePointerClick, BookOpen,
-  House, Phone, PhoneCall, PhoneOff, Smartphone, QrCode, Share2, CirclePlay, FolderOpen, ClipboardCopy, Copy, Link, KeyRound,
-  Clapperboard, Puzzle, MonitorPlay, RectangleHorizontal, RectangleVertical, LoaderCircle, CircleCheck, TriangleAlert, Globe, ArrowRight,
-} from 'lucide';
+// Skepnads egna ikoner: handritade 24×24-glyfer i cyberstil – skarpa,
+// avfasade hörn, linje i currentColor och en accentdel (.ia) i neonfärg.
 
-const ICONS = {
-  drama: Drama, bot: Bot, image: Image, 'wand-sparkles': WandSparkles, glasses: Glasses, waveform: AudioWaveform, drum: Drum,
-  party: PartyPopper, layers: Layers, tower: RadioTower, settings: Settings, circle: Circle, camera: Camera, external: ExternalLink,
-  'eye-off': EyeOff, eye: Eye, volume: Volume2, mute: VolumeX, help: CircleQuestionMark, mic: Mic, 'mic-off': MicOff, video: Video,
-  'video-off': VideoOff, sparkles: Sparkles, user: User, save: Save, trash: Trash, upload: Upload, play: Play, stop: Square, x: X,
-  check: Check, keyboard: Keyboard, lock: Lock, info: Info, zap: Zap, sliders: SlidersHorizontal, palette: Palette, music: Music,
-  headphones: Headphones, cast: Cast, maximize: Maximize, reset: RefreshCcw, heart: Heart, flame: Flame, tv: Tv, face: ScanFace,
-  mountain: Mountain, film: Film, chat: MessageSquare, clock: Clock, radio: Radio, monitor: MonitorUp, hand: Hand, wand: Wand,
-  download: Download, gauge: Gauge, shuffle: Shuffle, plus: Plus, rec: CircleDot, rocket: Rocket, gamepad: Gamepad2, crown: Crown,
-  cpu: Cpu, activity: Activity, ghost: Ghost, next: ChevronRight, prev: ChevronLeft, captions: Captions, frame: Frame,
-  'scan-eye': ScanEye, wifi: Wifi, 'wifi-off': WifiOff, theater: Theater, send: Send, signal: Signal, 'image-plus': ImagePlus,
-  box: Box, sun: Sun, contrast: Contrast, droplets: Droplets, thermometer: Thermometer, crosshair: Crosshair,
-  pointer: MousePointerClick, book: BookOpen,
-  home: House, phone: Phone, call: PhoneCall, 'phone-off': PhoneOff, smartphone: Smartphone, qr: QrCode, share: Share2, 'play-circle': CirclePlay,
-  folder: FolderOpen, 'clip-copy': ClipboardCopy, copy: Copy, link: Link, key: KeyRound, clapper: Clapperboard, puzzle: Puzzle, live: MonitorPlay,
-  landscape: RectangleHorizontal, portrait: RectangleVertical, loader: LoaderCircle, ok: CircleCheck, alert: TriangleAlert, globe: Globe, arrow: ArrowRight,
+const s = (d) => `<path d="${d}"/>`;
+const a = (d) => `<path class="ia" d="${d}"/>`;
+const c = (cx, cy, r) => `<circle cx="${cx}" cy="${cy}" r="${r}"/>`;
+const ca = (cx, cy, r) => `<circle class="ia" cx="${cx}" cy="${cy}" r="${r}"/>`;
+
+function gear(cx, cy, ro, ri, n) {
+  let d = '';
+  for (let i = 0; i < n * 2; i++) {
+    const r = i % 2 ? ri : ro;
+    const a0 = (i / (n * 2)) * Math.PI * 2 - Math.PI / (n * 2);
+    const a1 = ((i + 1) / (n * 2)) * Math.PI * 2 - Math.PI / (n * 2);
+    d += `${i ? 'L' : 'M'}${(cx + Math.cos(a0) * r).toFixed(2)} ${(cy + Math.sin(a0) * r).toFixed(2)}L${(cx + Math.cos(a1) * r).toFixed(2)} ${(cy + Math.sin(a1) * r).toFixed(2)}`;
+  }
+  return `${d}Z`;
+}
+
+const G = {
+  // navigation
+  home: s('M3 11.2 12 3.6l9 7.6M5.4 9.6V20.4h13.2V9.6') + a('M10 14.2h4v6.2h-4z'),
+  drama: s('M4 4.5h16v6.8c0 5-3.6 8.7-8 8.7s-8-3.7-8-8.7Z') + a('M6.8 9.6l3.8-.6-.6 2.6Zm10.4 0-3.8-.6.6 2.6Z') + s('M8.8 15.2q3.2 2.2 6.4 0'),
+  bot: s('M6.5 8h11l2 2v8l-2 2h-11l-2-2v-8ZM12 8V4.6') + ca(12, 3.6, 1.4) + a('M8.4 12.2h2.6v2.4H8.4zm4.6 0h2.6v2.4H13z'),
+  mountain: s('M2.6 19.6 9 9.4l3.9 6.1 2.6-3.7 5.9 7.8Z') + ca(17.2, 5.8, 2.1),
+  palette: c(12, 8.6, 5) + c(8.6, 14.6, 5) + c(15.4, 14.6, 5) + ca(12, 12.6, 1.4),
+  layers: a('M12 3.2 20.8 8 12 12.8 3.2 8Z') + s('M3.2 12.2 12 17l8.8-4.8M3.2 16.2 12 21l8.8-4.8'),
+  face: s('M12 4.4a8 8 0 0 1 8 8 8 8 0 0 1-16 0 8 8 0 0 1 8-8Z') + a('M5.6 10h4.6v3.2H5.6zm8.2 0h4.6v3.2h-4.6z') + s('M10.2 11.4h3.6M9.4 16.4q2.6 1.6 5.2 0'),
+  waveform: s('M3 11v2M6 8.5v7M9 5v14M12 8v8M15 3.5v17M18 7.5v9M21 10.5v3') + a('M14 3.5h2v17h-2z'),
+  drum: s('M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4z') + a('M13 13h7v7h-7z'),
+  party: s('M4 20.4 8.4 8.6l7 7Z') + a('M15.2 3.4l.7 2.1 2.1.7-2.1.7-.7 2.1-.7-2.1-2.1-.7 2.1-.7Z') + s('M12.2 7.4c.6-1.8 2.2-2.6 3.8-2.4M17 12c1.8-.6 3.4.2 4 1.8M19 4.6l1.4-1.4'),
+  sparkles: a('M10 3l1.8 5.2L17 10l-5.2 1.8L10 17l-1.8-5.2L3 10l5.2-1.8Z') + s('M18 14.5l.9 2.6 2.6.9-2.6.9L18 21.5l-.9-2.6-2.6-.9 2.6-.9Z'),
+  clapper: s('M3.4 9.4h17.2v10.2H3.4zM3.4 9.4 5.2 4.6l15 0-1.4 4.8') + a('M7.6 4.6 6.2 9.4h2.6L10.2 4.6Zm5.4 0-1.4 4.8h2.6l1.4-4.8Z'),
+  live: ca(12, 12, 2.3) + s('M7.6 7.6a6.2 6.2 0 0 0 0 8.8M16.4 7.6a6.2 6.2 0 0 1 0 8.8M4.8 4.8a10.2 10.2 0 0 0 0 14.4M19.2 4.8a10.2 10.2 0 0 1 0 14.4'),
+  call: s('M5 4.4h3.6l1.6 4-2.2 1.6a10 10 0 0 0 6 6l1.6-2.2 4 1.6v3.6a1.4 1.4 0 0 1-1.6 1.4A16 16 0 0 1 3.6 6 1.4 1.4 0 0 1 5 4.4Z') + a('M14.4 3.6a6 6 0 0 1 6 6h-1.8a4.2 4.2 0 0 0-4.2-4.2Z'),
+  smartphone: s('M7.4 2.6h9.2l1 1v16.8l-1 1H7.4l-1-1V3.6Z') + a('M10 18.2h4v1.4h-4z') + s('M10.4 5h3.2'),
+  settings: s(gear(12, 12, 9, 7, 8)) + ca(12, 12, 2.8),
+  camera: s('M3 7.6h4.4L9 5h6l1.6 2.6H21v11.8H3Z') + c(12, 13.2, 4) + ca(12, 13.2, 1.7),
+  external: s('M13.6 4.4H19.6V10.4M19.6 4.4l-8 8M17.4 13.6v6H4.4V6.6h6'),
+  'eye-off': s('M3 12s3.4-6.4 9-6.4S21 12 21 12s-3.4 6.4-9 6.4S3 12 3 12ZM4 4l16 16') + ca(12, 12, 2),
+  eye: s('M3 12s3.4-6.4 9-6.4S21 12 21 12s-3.4 6.4-9 6.4S3 12 3 12Z') + ca(12, 12, 2.6),
+  volume: s('M3.6 9.4h3.6l5-4.2v13.6l-5-4.2H3.6Z') + a('M15.4 8.6a4.6 4.6 0 0 1 0 6.8l-1.1-1.1a3 3 0 0 0 0-4.6Z') + s('M17.8 5.8a8.4 8.4 0 0 1 0 12.4'),
+  mute: s('M3.6 9.4h3.6l5-4.2v13.6l-5-4.2H3.6Z') + a('M15.2 9.2l5.6 5.6m0-5.6-5.6 5.6'),
+  help: s('M12 3.4 20.6 12 12 20.6 3.4 12Z') + s('M9.8 9.6a2.3 2.3 0 0 1 4.4 1c0 1.6-2.2 1.8-2.2 3.2') + ca(12, 16.4, 1),
+  mic: s('M9 6.2a3 3 0 0 1 6 0v5.6a3 3 0 0 1-6 0ZM5.8 11.6a6.2 6.2 0 0 0 12.4 0M12 17.8v3.2M8.8 21h6.4') + a('M10.6 6.6h2.8v1.4h-2.8zm0 2.6h2.8v1.4h-2.8z'),
+  'mic-off': s('M9 6.2a3 3 0 0 1 6 0v5.6a3 3 0 0 1-6 0ZM5.8 11.6a6.2 6.2 0 0 0 12.4 0M12 17.8v3.2') + a('M3.6 3.6l16.8 16.8-1.2 1.2L2.4 4.8Z'),
+  video: s('M3.4 6.6h11.8v10.8H3.4Z') + a('M15.2 10.4 20.6 7v10l-5.4-3.4Z'),
+  save: s('M4 4h12.4L20 7.6V20H4ZM8 4v5h7V4M7.4 20v-6.4h9.2V20') + a('M12.2 5.4h1.6v2.4h-1.6z'),
+  trash: s('M4 6.6h16M9 6.6V4h6v2.6M6 6.6l1 13.8h10l1-13.8') + a('M10 10h1.4v7H10zm2.6 0H14v7h-1.4z'),
+  upload: s('M4 15v5h16v-5') + a('M12 3.4 17 8.4h-3.4v6.6h-3.2V8.4H7Z'),
+  download: s('M4 15v5h16v-5') + a('M12 15.6 7 10.6h3.4V4h3.2v6.6H17Z'),
+  play: a('M7 4.4v15.2L19.4 12Z'),
+  stop: a('M6 6h12v12H6Z'),
+  rec: c(12, 12, 8.4) + ca(12, 12, 4.6),
+  x: s('M5.6 5.6l12.8 12.8m0-12.8L5.6 18.4'),
+  check: s('M4.6 12.6l4.6 4.6 10.2-10.2'),
+  plus: s('M12 4.6v14.8M4.6 12h14.8'),
+  minus: s('M4.6 12h14.8'),
+  keyboard: s('M2.6 6.4h18.8v11.2H2.6Z') + a('M5.2 9h1.8v1.8H5.2zm3.4 0h1.8v1.8H8.6zm3.4 0h1.8v1.8H12zm3.4 0h1.8v1.8h-1.8zM7 13.6h10v1.8H7z'),
+  info: c(12, 12, 8.6) + s('M12 11v6') + ca(12, 7.8, 1.2),
+  music: s('M9 18.2V5.6l11-2.2v12.4') + a('M5.6 15.6a3.2 2.6 0 1 0 6.4 0 3.2 2.6 0 1 0-6.4 0Zm11-2.2a3.2 2.6 0 1 0 6.4 0 3.2 2.6 0 1 0-6.4 0Z'),
+  headphones: s('M4 15.4v-3a8 8 0 0 1 16 0v3') + a('M3.6 14h3.6v6.4H4.6l-1-1Zm16.8 0h-3.6v6.4h2.6l1-1Z'),
+  reset: s('M4.6 12a7.4 7.4 0 1 0 2.2-5.2') + a('M3.4 3.4v5.8h5.8Z'),
+  flame: s('M12 21c-4 0-6.6-2.8-6.6-6.4 0-3.8 3.2-5.4 3.4-9.6 2.6 1.8 3.6 3.8 3.6 5.8 1-1.2 1.6-2.8 1.4-4.6 2.8 1.8 4.8 5 4.8 8.4 0 3.6-2.6 6.4-6.6 6.4Z') + a('M12 19c-1.6 0-2.6-1.1-2.6-2.6 0-1.6 1.4-2.4 1.6-4 1.6 1 3.6 2.4 3.6 4 0 1.5-1 2.6-2.6 2.6Z'),
+  film: s('M4 3.4h16v17.2H4ZM8 3.4v17.2M16 3.4v17.2') + a('M4.8 6h2.4v2H4.8zm0 5h2.4v2H4.8zm0 5h2.4v2H4.8zM16.8 6h2.4v2h-2.4zm0 5h2.4v2h-2.4zm0 5h2.4v2h-2.4z'),
+  chat: s('M3.6 5h16.8v11H9.4l-4.8 3.8V16H3.6Z') + a('M7.4 9.6h9.2V11H7.4zm0 2.8h5.8v1.4H7.4z'),
+  radio: s('M3.4 9h17.2v11.4H3.4ZM6 9l11.4-5') + c(15.6, 14.6, 3) + a('M5.8 12h4.6v1.4H5.8zm0 3h4.6v1.4H5.8z'),
+  rocket: s('M12 2.8c3.4 2.6 4.6 6.6 3.6 12.6H8.4C7.4 9.4 8.6 5.4 12 2.8ZM8.4 12 5 16.6l3.6.2M15.6 12 19 16.6l-3.6.2') + ca(12, 9, 1.8) + a('M10 17.6h4l-2 4Z'),
+  gamepad: s('M6.6 7.4h10.8a4 4 0 0 1 3.9 3.2l.9 4.8a2.6 2.6 0 0 1-4.6 2.1l-1.8-2.3H8.2l-1.8 2.3a2.6 2.6 0 0 1-4.6-2.1l.9-4.8a4 4 0 0 1 3.9-3.2ZM7.8 10.4v3.6M6 12.2h3.6') + ca(15.6, 11, 1.1) + ca(17.6, 13.2, 1.1),
+  crown: s('M3.6 18 2.8 7.6l5 4L12 4.6l4.2 7 5-4L20.4 18Z') + a('M3.6 18h16.8v2.4H3.6z'),
+  ghost: s('M5.4 20.4V10.6a6.6 6.6 0 0 1 13.2 0v9.8l-2.2-1.8-2.2 1.8-2.2-1.8-2.2 1.8-2.2-1.8Z') + a('M8.8 9.6h2.2v3H8.8zm4.2 0h2.2v3H13z'),
+  next: s('M9 4.6 16.4 12 9 19.4'),
+  prev: s('M15 4.6 7.6 12 15 19.4'),
+  send: s('M3 11 21 3.4l-7.6 17.6-2.6-7.2Z') + a('M10.8 13.8 21 3.4l-7.4 9.6Z'),
+  box: s('M12 2.8 20.4 7.4v9.2L12 21.2l-8.4-4.6V7.4ZM3.6 7.4 12 12l8.4-4.6M12 12v9.2') + a('M12 2.8 20.4 7.4 12 12 3.6 7.4Z'),
+  pointer: s('M5 3.4 19 11.2l-6 1.8-2.8 6Z') + a('M13 13l5.2 5.2-1.8 1.8-5.2-5.2Z'),
+  phone: s('M5 4.4h3.6l1.6 4-2.2 1.6a10 10 0 0 0 6 6l1.6-2.2 4 1.6v3.6a1.4 1.4 0 0 1-1.6 1.4A16 16 0 0 1 3.6 6 1.4 1.4 0 0 1 5 4.4Z'),
+  qr: s('M3.6 3.6h6.8v6.8H3.6zm10 0h6.8v6.8h-6.8zm-10 10h6.8v6.8H3.6z') + a('M5.8 5.8h2.4v2.4H5.8zm10 0h2.4v2.4h-2.4zm-10 10h2.4v2.4H5.8zm8-2.2h2.4V16h-2.4zm3.8 0h2.6V16h-2.6zm-3.8 4h2.4v2.6h-2.4zm4.2 1.6h2.4v2.4H18z'),
+  share: c(6, 12, 2.6) + c(17.6, 5.6, 2.6) + c(17.6, 18.4, 2.6) + a('M8.2 10.8 15.4 6.8l.6 1.2-7.2 4Zm0 2.4 7.2 4-.6 1.2-7.2-4Z'),
+  'play-circle': c(12, 12, 8.6) + a('M10 8.2v7.6l6-3.8Z'),
+  folder: s('M3 5.4h6.4l2 2.2H21V19H3Z') + a('M3 10h18v1.6H3z'),
+  'clip-copy': s('M8 4.4h8v3H8zM6 6H4.6v14.4h14.8V6H18') + a('M8 12h8v1.6H8zm0 3.4h5.6V17H8z'),
+  copy: s('M8.6 8.6h11.8v11.8H8.6Z') + a('M3.6 3.6h11.8v3.4H7v8.4H3.6Z'),
+  link: s('M10.4 13.6a3.6 3.6 0 0 0 5.2 0l3-3a3.6 3.6 0 0 0-5.2-5.2l-1.2 1.2M13.6 10.4a3.6 3.6 0 0 0-5.2 0l-3 3a3.6 3.6 0 0 0 5.2 5.2l1.2-1.2'),
+  key: c(7.6, 15.6, 4) + s('M10.4 12.8 20 3.2M16.4 6.8l2.4 2.4M14.2 9l1.8 1.8') + ca(7.6, 15.6, 1.4),
+  puzzle: s('M4 7.4h4a2 2 0 1 1 4 0h4v4a2 2 0 1 1 0 4v4.2H4v-4.2a2 2 0 1 0 0-4Z') + a('M16 11.4a2 2 0 1 1 0 4Z'),
+  landscape: s('M2.8 6.4h18.4v11.2H2.8Z') + a('M5 15.4l3.6-4.6 2.6 3.2 2.2-2.6 3.8 4Z'),
+  portrait: s('M6.4 2.8h11.2v18.4H6.4Z') + a('M8.6 18.6l2.6-4 2 2.6 1.6-1.8 2.6 3.2Z'),
+  loader: s('M12 3.4a8.6 8.6 0 1 1-8.6 8.6') + a('M12 1.8v3.2h-1.2V1.8Z'),
+  ok: c(12, 12, 8.6) + a('M7.6 12.4l3 3 6-6.2-1.2-1.2-4.8 5-1.8-1.8Z'),
+  alert: s('M12 3.2 21.2 19.6H2.8Z') + a('M11.2 9h1.6v5.4h-1.6zm0 6.6h1.6v1.6h-1.6z'),
+  image: s('M3.4 4.4h17.2v15.2H3.4Z') + ca(8.4, 9, 1.8) + a('M5 17.6l5-6 3.4 4 2.4-2.8 3.2 4.8Z'),
+  // nya
+  flip: s('M4.6 9.4a7.6 7.6 0 0 1 13.6-3.2M19.4 14.6a7.6 7.6 0 0 1-13.6 3.2') + a('M18.4 2.6v4.8h-4.8Zm-12.8 19v-4.8h4.8Z') + c(12, 12, 2.2),
+  dice: s('M4.4 4.4h15.2v15.2H4.4Z') + ca(8.4, 8.4, 1.5) + ca(15.6, 8.4, 1.5) + ca(12, 12, 1.5) + ca(8.4, 15.6, 1.5) + ca(15.6, 15.6, 1.5),
+  sticker: s('M4 4h16v9.4L13.4 20H4Z') + a('M13.4 20v-6.6H20Z') + ca(9, 9.4, 1.2) + ca(14.4, 9.4, 1.2) + s('M8.6 13.6q2.4 1.8 4 .6'),
+  text: s('M5 6.6V4.4h14v2.2M12 4.4v15.2M9 19.6h6') + a('M16.8 15.4h4.4v1.4h-4.4z'),
+  timer: c(12, 13.4, 7.6) + s('M9.4 2.8h5.2M12 2.8v3') + a('M12 13.4V8.4h1.4v5.6l-1.4 0Z'),
+  booth: s('M6.6 2.6h10.8v18.8H6.6Z') + a('M8.6 4.6h6.8v3.6H8.6zm0 5.6h6.8v3.6H8.6zm0 5.6h6.8v3.6H8.6z'),
+  heart: s('M12 20.2C6.6 16.4 3.4 13.2 3.4 9.4A4.4 4.4 0 0 1 12 7.2a4.4 4.4 0 0 1 8.6 2.2c0 3.8-3.2 7-8.6 10.8Z') + a('M7.2 8.6a2.2 2.2 0 0 1 2.2-1.6v1.4a1 1 0 0 0-.8.6Z'),
+  star: a('M12 2.8l2.7 6 6.5.6-4.9 4.3 1.5 6.4L12 16.8l-5.8 3.3 1.5-6.4L2.8 9.4l6.5-.6Z'),
+  bolt: a('M13.6 2.4 4.6 13.6h6l-1.4 8 9.2-11.4h-6Z'),
+  grid: s('M4 4h7v7H4zm9 0h7v7h-7zM4 13h7v7H4zm9 0h7v7h-7z'),
+  pin: s('M14.6 3.4 20.6 9.4l-2.8.6-3.6 3.6.4 4-1.6 1.6-3.2-3.2-4.4 4.4M8.2 11.2 12.8 15.8') + a('M14.6 3.4 20.6 9.4l-2.8.6-3.4-3.4Z'),
+  rotate: s('M19.4 12a7.4 7.4 0 1 1-2.2-5.2') + a('M20.6 3.4v5.8h-5.8Z'),
+  more: ca(5.4, 12, 1.8) + ca(12, 12, 1.8) + ca(18.6, 12, 1.8),
+  menu: s('M3.6 6h16.8M3.6 12h16.8M3.6 18h10') + a('M15.6 17h4.8v2h-4.8z'),
+  back: s('M10 5 3.6 12l6.4 7M3.6 12h16.8'),
+  fullscreen: s('M3.6 9V3.6H9M15 3.6h5.4V9M20.4 15v5.4H15M9 20.4H3.6V15'),
+  wand: s('M3.6 20.4 14.6 9.4') + a('M14.6 9.4l1.8 1.8L5.4 22.2 3.6 20.4Z') + s('M17.4 2.6v3.2M19 4.2h-3.2M20.6 9v2.4M21.8 10.2h-2.4M11.8 3.2v2M12.8 4.2h-2'),
+  user: c(12, 8, 4) + s('M4 20.6a8 8 0 0 1 16 0'),
+  lock: s('M5.4 10.6h13.2v9.8H5.4ZM8 10.6V7.4a4 4 0 0 1 8 0v3.2') + ca(12, 15.4, 1.6),
+  globe: c(12, 12, 8.6) + s('M3.4 12h17.2M12 3.4c2.6 2.4 3.8 5.2 3.8 8.6s-1.2 6.2-3.8 8.6c-2.6-2.4-3.8-5.2-3.8-8.6S9.4 5.8 12 3.4Z'),
+  arrow: s('M4 12h15.6M13.4 5.8 19.6 12l-6.2 6.2'),
+  emoji: c(12, 12, 8.6) + ca(9, 10, 1.3) + ca(15, 10, 1.3) + a('M7.6 13.4h8.8a4.4 4.4 0 0 1-8.8 0Z'),
+  scan: s('M3.6 8.4V3.6h4.8M15.6 3.6h4.8v4.8M20.4 15.6v4.8h-4.8M8.4 20.4H3.6v-4.8') + a('M3.6 11.2h16.8v1.6H3.6z'),
+  shuffle: s('M3.4 7h3.8c4.4 0 5.6 10 10 10h3.4M3.4 17h3.8c1.6 0 2.6-1.4 3.4-3M14 10c.8-1.6 1.8-3 3.4-3h3.2') + a('M18.4 4.6 21 7l-2.6 2.4Zm0 10L21 17l-2.6 2.4Z'),
+  cpu: s('M6.6 6.6h10.8v10.8H6.6ZM9.4 2.8v3.8M14.6 2.8v3.8M9.4 17.4v3.8M14.6 17.4v3.8M2.8 9.4h3.8M2.8 14.6h3.8M17.4 9.4h3.8M17.4 14.6h3.8') + a('M9.4 9.4h5.2v5.2H9.4z'),
+  zap: a('M13.6 2.4 4.6 13.6h6l-1.4 8 9.2-11.4h-6Z'),
 };
+
+const ALIAS = { 'wand-sparkles': 'sparkles', tower: 'live', circle: 'rec', 'video-off': 'video', sliders: 'settings', cast: 'live', maximize: 'fullscreen', tv: 'clapper', clock: 'timer', monitor: 'external', hand: 'pointer', gauge: 'settings', activity: 'waveform', captions: 'chat', frame: 'scan', 'scan-eye': 'eye', theater: 'drama', signal: 'live', 'image-plus': 'image', sun: 'sparkles', contrast: 'palette', droplets: 'palette', thermometer: 'flame', crosshair: 'scan', book: 'help', 'phone-off': 'phone', wifi: 'live', 'wifi-off': 'live' };
 
 const cache = new Map();
 
@@ -36,10 +127,14 @@ const cache = new Map();
 export function icon(name, size = 18) {
   const key = `${name}:${size}`;
   if (!cache.has(key)) {
-    const node = ICONS[name];
-    if (!node) return '';
-    const el = createElement(node, { width: size, height: size, 'stroke-width': 1.9, class: 'ico', 'aria-hidden': 'true' });
-    cache.set(key, el.outerHTML);
+    const body = G[name] ?? G[ALIAS[name]];
+    if (!body) return '';
+    cache.set(
+      key,
+      `<svg class="ico i-${name}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">${body}</svg>`,
+    );
   }
   return cache.get(key);
 }
+
+export const ICON_NAMES = Object.keys(G);
