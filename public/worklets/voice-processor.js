@@ -48,6 +48,164 @@ export class PitchShifter {
   }
 }
 
+/** Radix-2 FFT på plats (re/im). inv = true ger invers (utan 1/N-skalning). */
+function fft(re, im, inv) {
+  const n = re.length;
+  for (let i = 1, j = 0; i < n; i++) {
+    let bit = n >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) {
+      let t = re[i];
+      re[i] = re[j];
+      re[j] = t;
+      t = im[i];
+      im[i] = im[j];
+      im[j] = t;
+    }
+  }
+  for (let len = 2; len <= n; len <<= 1) {
+    const ang = ((inv ? 2 : -2) * Math.PI) / len;
+    const wr = Math.cos(ang);
+    const wi = Math.sin(ang);
+    for (let i = 0; i < n; i += len) {
+      let cr = 1;
+      let ci = 0;
+      for (let k = 0; k < len / 2; k++) {
+        const a = i + k;
+        const b = a + len / 2;
+        const xr = re[b] * cr - im[b] * ci;
+        const xi = re[b] * ci + im[b] * cr;
+        re[b] = re[a] - xr;
+        im[b] = im[a] - xi;
+        re[a] += xr;
+        im[a] += xi;
+        const t = cr * wr - ci * wi;
+        ci = cr * wi + ci * wr;
+        cr = t;
+      }
+    }
+  }
+}
+
+/**
+ * Röstbyte (tjej/kille): faskodare som flyttar grundtonen med `ratio` och
+ * formanterna (röströrets klang) separat med `formant`. Spektrumet delas i
+ * fint harmoniskt innehåll och ett utjämnat hölje; bara innehållet tonhöjdsflyttas,
+ * höljet sträcks för sig. Latens = N sampel.
+ */
+export class FormantShifter {
+  constructor(sampleRate, { size = 1024, osamp = 4 } = {}) {
+    const N = size;
+    this.N = N;
+    this.hop = N / osamp;
+    this.osamp = osamp;
+    this.binHz = sampleRate / N;
+    this.win = new Float64Array(N);
+    for (let k = 0; k < N; k++) this.win[k] = 0.5 - 0.5 * Math.cos((2 * Math.PI * k) / N);
+    this.inF = new Float64Array(N);
+    this.outF = new Float64Array(N);
+    this.acc = new Float64Array(2 * N);
+    this.re = new Float64Array(N);
+    this.im = new Float64Array(N);
+    const H = N / 2 + 1;
+    this.lastPh = new Float64Array(H);
+    this.sumPh = new Float64Array(H);
+    this.mag = new Float64Array(H);
+    this.freq = new Float64Array(H);
+    this.env = new Float64Array(H);
+    this.tmp = new Float64Array(H);
+    this.sMag = new Float64Array(H);
+    this.sFreq = new Float64Array(H);
+    this.rover = N - this.hop;
+  }
+
+  _smooth(src, dst, r) {
+    // två lådfilter efter varandra ≈ triangel – ger höljet utan övertonerna
+    const H = src.length;
+    const t = this.tmp;
+    for (let pass = 0; pass < 2; pass++) {
+      const a = pass ? t : src;
+      const b = pass ? dst : t;
+      let s = 0;
+      let n = 0;
+      for (let k = -r; k <= r; k++) if (k >= 0 && k < H) (s += a[k]), n++;
+      for (let k = 0; k < H; k++) {
+        b[k] = s / n;
+        const add = k + r + 1;
+        const rem = k - r;
+        if (add < H) (s += a[add]), n++;
+        if (rem >= 0) (s -= a[rem]), n--;
+      }
+    }
+  }
+
+  _frame(ratio, formant) {
+    const { N, re, im, win, mag, freq, env, sMag, sFreq, binHz, osamp } = this;
+    const H = N / 2 + 1;
+    const expct = (2 * Math.PI * this.hop) / N;
+    for (let k = 0; k < N; k++) {
+      re[k] = this.inF[k] * win[k];
+      im[k] = 0;
+    }
+    fft(re, im, false);
+    for (let k = 0; k < H; k++) {
+      const m = Math.hypot(re[k], im[k]);
+      const ph = Math.atan2(im[k], re[k]);
+      let d = ph - this.lastPh[k] - k * expct;
+      this.lastPh[k] = ph;
+      d -= 2 * Math.PI * Math.round(d / (2 * Math.PI));
+      freq[k] = (k + (d * osamp) / (2 * Math.PI)) * binHz;
+      mag[k] = Math.log(m + 1e-9);
+    }
+    this._smooth(mag, env, 7);
+    sMag.fill(0);
+    sFreq.fill(0);
+    for (let k = 0; k < H; k++) {
+      const j = Math.round(k * ratio);
+      if (j >= H) break;
+      const flat = Math.exp(mag[k] - env[k]);
+      if (flat > sMag[j]) {
+        sMag[j] = flat;
+        sFreq[j] = freq[k] * ratio;
+      }
+    }
+    for (let k = 0; k < H; k++) {
+      // nytt hölje: formanterna flyttas med `formant`
+      const src = k / formant;
+      const i0 = Math.floor(src);
+      const e = i0 + 1 < H ? env[i0] + (env[i0 + 1] - env[i0]) * (src - i0) : env[H - 1] - 4;
+      const m = sMag[k] * Math.exp(e);
+      this.sumPh[k] += ((sFreq[k] - k * binHz) / binHz) * ((2 * Math.PI) / osamp) + k * expct;
+      re[k] = m * Math.cos(this.sumPh[k]);
+      im[k] = m * Math.sin(this.sumPh[k]);
+    }
+    for (let k = H; k < N; k++) {
+      re[k] = re[N - k];
+      im[k] = -im[N - k];
+    }
+    fft(re, im, true);
+    const g = 2 / ((N / 2) * osamp);
+    for (let k = 0; k < N; k++) this.acc[k] += win[k] * re[k] * g;
+    for (let k = 0; k < this.hop; k++) this.outF[k] = this.acc[k];
+    this.acc.copyWithin(0, this.hop);
+    this.acc.fill(0, N);
+    this.inF.copyWithin(0, this.hop);
+  }
+
+  /** Ett sampel in, ett ut. */
+  process(x, ratio, formant) {
+    this.inF[this.rover] = x;
+    const y = this.outF[this.rover - (this.N - this.hop)];
+    this.rover++;
+    if (this.rover >= this.N) {
+      this.rover = this.N - this.hop;
+      this._frame(ratio, formant);
+    }
+    return y;
+  }
+}
+
 /** YIN-tonhöjdsdetektering. Returnerar frekvens i Hz eller -1. */
 export function yin(buf, sampleRate, { threshold = 0.15, minFreq = 70, maxFreq = 900 } = {}) {
   const n = buf.length;
@@ -116,7 +274,8 @@ if (hasWorklet) {
       const sr = sampleRate;
       this.sr = sr;
       this.shifter = new PitchShifter(sr, { windowMs: 42, voices: 5 });
-      this.p = { pitch: 0, harmony: [], harmonyMix: 0.55, autotune: false, autotuneKey: 0, autotuneScale: 'major', autotuneSpeed: 0.85, robot: 0, ringFreq: 55, gate: -58, bypass: false };
+      this.voc = new FormantShifter(sr);
+      this.p = { pitch: 0, formant: 0, harmony: [], harmonyMix: 0.55, autotune: false, autotuneKey: 0, autotuneScale: 'major', autotuneSpeed: 0.85, robot: 0, ringFreq: 55, gate: -58, bypass: false };
       this.ringPhase = 0;
       // Autotune-analys
       this.decim = 2;
@@ -151,6 +310,7 @@ if (hasWorklet) {
       const p = this.p;
       const sr = this.sr;
       const manual = Math.pow(2, p.pitch / 12);
+      const fRatio = p.formant ? Math.pow(2, p.formant / 12) : 1;
       const harm = p.harmony || [];
       const hRatios = harm.map((s) => Math.pow(2, s / 12));
       const hGain = harm.length ? p.harmonyMix / Math.sqrt(harm.length) : 0;
@@ -201,7 +361,8 @@ if (hasWorklet) {
         }
         this.shifter.write(xg);
         const main = manual * this.atRatio;
-        let y = this.shifter.voice(0, main);
+        // Med formantflytt (tjej/kille): faskodaren, annars den snabba fördröjningslinjen
+        let y = fRatio !== 1 ? this.voc.process(xg, main, fRatio) : this.shifter.voice(0, main);
         for (let h = 0; h < hRatios.length && h < 4; h++) y += this.shifter.voice(h + 1, hRatios[h] * main) * hGain;
         if (p.robot > 0) {
           this.ringPhase += ringInc;

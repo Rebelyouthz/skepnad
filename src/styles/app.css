@@ -397,6 +397,8 @@ kbd {
 .card:active { transform: perspective(700px) rotateX(var(--rx)) rotateY(var(--ry)) scale(0.97); }
 .card .emoji { font-size: 30px; line-height: 1.1; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55)); transform: translateZ(28px); transition: transform 0.4s var(--spring); }
 .card .emoji img { width: 34px; height: 34px; display: block; }
+.card.thumb > img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; display: block; }
+.grid.live { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 .grid.faces { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
 .card.face { padding: 6px 6px 9px; }
 .card.face .emoji { width: 100%; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.5)); }

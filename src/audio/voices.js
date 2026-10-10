@@ -3,6 +3,8 @@ import { VOICE_PARAM_DEFAULTS } from '../app/defaults.js';
 
 export const VOICES = [
   { id: 'natural', group: 'basic', name: 'Naturlig', icon: '🎙️', desc: 'Din egen röst – tydlig, lätt komprimerad och brusfri.', p: {} },
+  { id: 'girl', group: 'basic', name: 'Tjej', icon: '👩', desc: 'Låter som en tjej: ljusare ton och kortare röströr – utan ekorreklang.', p: { pitch: 5, formant: 3, tone: 0.15, lowcut: 110 } },
+  { id: 'guy', group: 'basic', name: 'Kille', icon: '👨', desc: 'Låter som en kille: mörkare ton och längre röströr.', p: { pitch: -5, formant: -3, tone: -0.1 } },
   { id: 'robot', group: 'creatures', name: 'Robot', icon: '🤖', desc: 'Metallisk ringmodulering som en klassisk sci-fi-robot.', p: { robot: 0.85, ringFreq: 48, chorus: 0.2, tone: 0.2, echo: 0.1, echoTime: 0.05, echoFeedback: 0.55 } },
   { id: 'chipmunk', group: 'basic', name: 'Ekorre', icon: '🐿️', desc: 'Pip pip! Tonhöjden uppskruvad nio halvtoner.', p: { pitch: 9, tone: 0.3 } },
   { id: 'helium', group: 'basic', name: 'Helium', icon: '🎈', desc: 'Som att ha andats in en hel heliumballong.', p: { pitch: 12, tone: 0.5, highcut: 12000 } },

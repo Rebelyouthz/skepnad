@@ -41,7 +41,7 @@ import { icon } from './ui/icons.js';
 import { emblemSvg, wordmarkHtml } from './ui/brand.js';
 import { SKEP_EMOJIS, EMOJI_SETS } from './ui/emojis.js';
 import { TABS, MOBILE_TOOLS, panelFor, esc } from './ui/panels.js';
-import { FACE_MAP, MAKEUP_PRESETS, faceDef, faceImage } from './app/faces.js';
+import { FACE_MAP, MAKEUP_PRESETS, LIVE_PLACES, faceDef, faceImage, placeVideo, placePoster } from './app/faces.js';
 import { bindAll } from './ui/bind.js';
 import { initStickerUi } from './ui/stickerUi.js';
 import { countdown, cancelCountdown, countdownRunning } from './ui/countdown.js';
@@ -240,9 +240,10 @@ async function start(mode) {
   progress('Förbereder shaders…', 0.94);
   wireState();
   // AI-ansiktet är huvudläget: första gången med kamera blir du "Kungen" (påhittad person)
-  if (runtime.hasCamera && !store.get('ui.aiFaceIntro')) {
+  if (runtime.hasCamera && !store.get('ui.aiFaceIntro2')) {
     store.set('ui.aiFaceIntro', true);
-    const intro = BUILTIN_PERSONAS.find((p) => p.id === 'ai-kungen');
+    store.set('ui.aiFaceIntro2', true);
+    const intro = BUILTIN_PERSONAS.find((p) => p.id === 'ai-tjej');
     if (intro) {
       applyLook(store, intro.look);
       store.set('personas.active', intro.id);
@@ -302,6 +303,21 @@ async function setPng(key, blob) {
   tex.needsUpdate = true;
   pngFrames[key] = tex;
   compositor.avatar.setPngFrames({ ...pngFrames });
+}
+
+let liveVideo = null;
+async function setLivePlace(id) {
+  const place = LIVE_PLACES.find((p) => p.id === id) ?? LIVE_PLACES[0];
+  if (liveVideo?.dataset.place === place.id) return liveVideo.play().catch(() => {});
+  const v = liveVideo ?? Object.assign(document.createElement('video'), { loop: true, muted: true, playsInline: true, crossOrigin: 'anonymous' });
+  v.setAttribute('playsinline', '');
+  liveVideo = v;
+  v.dataset.place = place.id;
+  v.poster = placePoster(place.id);
+  v.src = placeVideo(place.id);
+  await v.play().catch(() => {});
+  await new Promise((r) => (v.readyState >= 2 ? r() : v.addEventListener('loadeddata', r, { once: true })));
+  compositor.bg.setLive(new THREE.VideoTexture(v), v.videoWidth / v.videoHeight);
 }
 
 async function setBackgroundMedia(blob, type) {
@@ -500,7 +516,9 @@ function wireState() {
   });
   store.subscribe('soundboard', (sb) => audio.setSfx(sb.volume, sb.toStream), { immediate: true });
   store.subscribe('ambience', applyAmbience, { immediate: true });
-  store.subscribe('background', () => {
+  store.subscribe('background', (bg) => {
+    if (bg.type === 'live') setLivePlace(bg.live).catch((err) => console.warn('[plats]', err));
+    else liveVideo?.pause();
     applyAmbience();
     updateAmbientColor();
   }, { immediate: true });
@@ -1211,8 +1229,9 @@ const actions = {
     if (!runtime.hasCamera) return toast('AI-ansiktet behöver kameran – starta om med kamera för att se det.', 'info', 3800);
     store.set('video.mode', 'camera');
     uiSounds.play('pop');
-    const name = FACE_MAP[id]?.name;
-    if (name) toast(`🎭 ${name}`, 'ok', 1400);
+    const f = FACE_MAP[id];
+    if (f?.voice) store.patch('voice', { preset: f.voice, params: voiceParams(f.voice), enabled: true });
+    if (f) toast(`🎭 ${f.name}${f.voice ? ' – med röst' : ''}`, 'ok', 1600);
   },
   makeupPreset: (id) => {
     const p = MAKEUP_PRESETS.find((x) => x.id === id);
@@ -1224,6 +1243,10 @@ const actions = {
     if (!runtime.hasCamera) return toast('Ingen kamera är igång – starta om med kamera.', 'info', 3500);
     store.set('video.mode', 'camera');
     rerenderPanel();
+  },
+  livePlace: (id) => {
+    store.patch('background', { type: 'live', live: id });
+    uiSounds.play('pop');
   },
   realBg: (type) => {
     if (type === 'blur' && !runtime.hasCamera) return toast('Suddigt rum kräver kameran.', 'info', 3000);

@@ -2,6 +2,8 @@
 // människor. Bilder och ansiktspunkter ligger i public/faces (faces.json skapas av
 // ett mätskript som kör MediaPipe på bilderna).
 export const FACE_LIST = [
+  { id: 'elin', name: 'Elin', desc: 'Tjej, 24 – fräknar', voice: 'girl' },
+  { id: 'oskar', name: 'Oskar', desc: 'Kille, 26 – skäggstubb', voice: 'guy' },
   { id: 'king', name: 'Kungen', desc: 'Gråsprängd, skäggstubb' },
   { id: 'queen', name: 'Drottningen', desc: 'Äldre, silverhår' },
   { id: 'president', name: 'Presidenten', desc: 'Kostym och allvar' },
@@ -30,6 +32,14 @@ export async function faceDef(id) {
   if (!list.length) all = null; // försök igen nästa gång (t.ex. tillfälligt nätverksfel)
   return list.find((f) => f.id === id) ?? null;
 }
+
+/** Levande, fotorealistiska platser (AI-genererade videoloopar). */
+export const LIVE_PLACES = [
+  { id: 'cozy', name: 'Mysig stuga', icon: '🔥', desc: 'Brasa, levande ljus och snöfall utanför fönstret.' },
+  { id: 'city', name: 'Takterrass', icon: '🌃', desc: 'Neonstad i regn – högt upp över skyskraporna.' },
+];
+export const placeVideo = (id) => `places/${id}.mp4`;
+export const placePoster = (id) => `places/${id}.jpg`;
 
 /** Sminkförval. */
 export const MAKEUP_PRESETS = [

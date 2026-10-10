@@ -59,6 +59,8 @@ export class BackgroundLayer {
     this.pass = new QuadPass(this.mediaMat);
     this.mediaTexture = null;
     this.mediaAspect = 16 / 9;
+    this.liveTexture = null;
+    this.liveAspect = 16 / 9;
   }
 
   sceneMaterial(id) {
@@ -93,6 +95,13 @@ export class BackgroundLayer {
     this.mediaAspect = aspect || 16 / 9;
   }
 
+  /** Levande plats (videoloop från public/places). */
+  setLive(texture, aspect) {
+    if (this.liveTexture && this.liveTexture !== texture) this.liveTexture.dispose();
+    this.liveTexture = texture;
+    this.liveAspect = aspect || 16 / 9;
+  }
+
   render(renderer, target, { type, sceneId, blurTexture, outW, outH, greenColor }) {
     const u = this.uniforms;
     u.uRes.value.set(outW, outH);
@@ -104,13 +113,15 @@ export class BackgroundLayer {
       if (type === 'blur' && blurTexture) {
         m.uniforms.uMode.value = 1;
         m.uniforms.tMedia.value = blurTexture;
-      } else if (type === 'image' && this.mediaTexture) {
+      } else if ((type === 'image' && this.mediaTexture) || (type === 'live' && this.liveTexture)) {
+        const live = type === 'live';
+        const asp = live ? this.liveAspect : this.mediaAspect;
         m.uniforms.uMode.value = 0;
-        m.uniforms.tMedia.value = this.mediaTexture;
+        m.uniforms.tMedia.value = live ? this.liveTexture : this.mediaTexture;
         const outA = outW / outH;
         const s = m.uniforms.uScale.value;
-        if (this.mediaAspect > outA) s.set(outA / this.mediaAspect, 1);
-        else s.set(1, this.mediaAspect / outA);
+        if (asp > outA) s.set(outA / asp, 1);
+        else s.set(1, asp / outA);
       } else {
         m.uniforms.uMode.value = 2;
         m.uniforms.uColor.value.set(type === 'green' ? greenColor || '#00ff00' : '#0b0b14');

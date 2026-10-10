@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PitchShifter, yin, snapMidi } from '../public/worklets/voice-processor.js';
+import { PitchShifter, FormantShifter, yin, snapMidi } from '../public/worklets/voice-processor.js';
 
 const SR = 48000;
 const sine = (f, n, sr = SR) => Float32Array.from({ length: n }, (_, i) => Math.sin((2 * Math.PI * f * i) / sr));
@@ -31,6 +31,29 @@ describe('snapMidi', () => {
   it('behåller en ton som redan ligger i skalan', () => {
     const { target } = snapMidi(440, 0, 'major');
     expect(target).toBe(69);
+  });
+});
+
+describe('FormantShifter', () => {
+  const run = (ratio, formant, f = 200) => {
+    const fs = new FormantShifter(SR);
+    const input = sine(f, SR);
+    const out = new Float32Array(input.length);
+    for (let i = 0; i < input.length; i++) out[i] = fs.process(input[i], ratio, formant);
+    return out.subarray(SR / 4);
+  };
+  it('flyttar tonen men inte rakt av formanterna (tjej: +5 halvtoner)', () => {
+    const r = Math.pow(2, 5 / 12);
+    expect(Math.abs(zeroCrossFreq(run(r, 1.19)) - 200 * r)).toBeLessThan(15);
+  });
+  it('ger ljud utan NaN', () => {
+    const out = run(0.75, 0.84);
+    let peak = 0;
+    for (const v of out) {
+      expect(Number.isFinite(v)).toBe(true);
+      peak = Math.max(peak, Math.abs(v));
+    }
+    expect(peak).toBeGreaterThan(0.05);
   });
 });
 

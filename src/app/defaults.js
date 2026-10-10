@@ -2,6 +2,7 @@
 
 export const VOICE_PARAM_DEFAULTS = {
   pitch: 0, // halvtoner
+  formant: 0, // röströrets klang i halvtoner (+ = ljusare/kvinnligare, - = mörkare/manligare)
   harmony: [], // extra stämmor i halvtoner
   harmonyMix: 0.55,
   autotune: false,
@@ -47,6 +48,7 @@ export const DEFAULTS = {
     type: 'scene', // 'none' | 'blur' | 'scene' | 'image' | 'green'
     scene: 'cabin',
     blur: 0.7,
+    live: 'cozy', // levande plats när type = 'live'
     parallax: true,
     reactive: true,
     filterAffectsBg: true,
@@ -71,7 +73,7 @@ export const DEFAULTS = {
     warp: 'none',
     warps: [], // extra förvrängningar samtidigt
     warpStrength: 0.85,
-    swap: 'king', // AI-ansikte (påhittad person i public/faces) eller 'none'
+    swap: 'elin', // AI-ansikte (påhittad person i public/faces) eller 'none'
     swapAmount: 1,
     swapLight: 0.5, // hur mycket rummets ljus/skuggor förs över
     makeup: { lips: 0, lipColor: '#a3242f', blush: 0, blushColor: '#e0707a' },
@@ -151,7 +153,8 @@ export const DEFAULTS = {
     mobileInit: false,
     personaCat: 'real',
     dockCat: 'real',
-    aiFaceIntro: false, // AI-ansiktet har slagits på första gången
+    aiFaceIntro: false,
+    aiFaceIntro2: false, // Tjej/Kille + levande plats visade första gången // AI-ansiktet har slagits på första gången
     avatarCat: '',
     emojiSet: 'faces',
     stickerPlace: 'above',

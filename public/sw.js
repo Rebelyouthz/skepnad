@@ -18,6 +18,8 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   const url = new URL(req.url);
   if (req.method !== 'GET' || url.origin !== location.origin || url.pathname.includes('/api/')) return;
+  // video strömmas med Range-förfrågningar – låt webbläsaren sköta dem direkt
+  if (req.headers.has('range') || /\.(mp4|webm)$/.test(url.pathname)) return;
   if (req.mode === 'navigate' || !HEAVY.test(url.pathname)) {
     // nätet först, cache som reserv (offline)
     e.respondWith(

@@ -14,17 +14,24 @@ const LIPS_IN = [78, 95, 88, 178, 87, 14, 317, 402, 318, 324, 308, 415, 310, 311
 /** Punkter där hudtonen mäts (kinder, panna, hakan, näsryggen). */
 export const SKIN_POINTS = [50, 280, 151, 9, 199, 123, 352, 205, 425];
 const N = 468;
+// Ögonens konturpunkter dupliceras så att ögontrianglarna kan tonas separat (blinkningar)
+const EYE_DUP = [...EYE_L, ...EYE_R];
+const NV = N + EYE_DUP.length;
 
 const VERT = /* glsl */ `
 attribute float aAlpha;
+attribute float aKind;
 attribute vec2 aVid;
+uniform float uEyeL;
+uniform float uEyeR;
 varying vec2 vUv;
 varying vec2 vVid;
 varying float vA;
 void main() {
   vUv = uv;
   vVid = aVid;
-  vA = aAlpha;
+  // AI-ansiktets ögon syns – men tonas bort när du blinkar så att dina stängda ögonlock syns
+  vA = aAlpha * (aKind < 0.5 ? 1.0 : aKind < 1.5 ? uEyeL : uEyeR);
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }`;
 
@@ -68,8 +75,8 @@ export class FaceSwapLayer {
     this.scene = new THREE.Scene();
     this.camera = new THREE.OrthographicCamera(0, 1280, 720, 0, -10, 10);
     this.geo = new THREE.BufferGeometry();
-    this.pos = new Float32Array(N * 3);
-    this.vid = new Float32Array(N * 2);
+    this.pos = new Float32Array(NV * 3);
+    this.vid = new Float32Array(NV * 2);
     this.geo.setAttribute('position', new THREE.BufferAttribute(this.pos, 3).setUsage(THREE.DynamicDrawUsage));
     this.geo.setAttribute('aVid', new THREE.BufferAttribute(this.vid, 2).setUsage(THREE.DynamicDrawUsage));
     this.uniforms = {
@@ -79,6 +86,8 @@ export class FaceSwapLayer {
       uShade: { value: 0.75 },
       uOpacity: { value: 1 },
       uRad: { value: new THREE.Vector2(0.03, 0.05) },
+      uEyeL: { value: 1 },
+      uEyeR: { value: 1 },
     };
     this.mat = new THREE.ShaderMaterial({
       uniforms: this.uniforms,
@@ -129,9 +138,15 @@ export class FaceSwapLayer {
     const holes = [new Set(EYE_L), new Set(EYE_R), new Set(LIPS_IN)];
     const all = delaunay(pts);
     const idx = [];
+    const eyeIdx = [];
+    const dup = new Map(EYE_DUP.map((v, k) => [v, N + k]));
     for (let i = 0; i < all.length; i += 3) {
       const t = [all[i], all[i + 1], all[i + 2]];
-      if (holes.some((h) => t.every((v) => h.has(v)))) continue;
+      if (holes[2].size && t.every((v) => holes[2].has(v))) continue; // munöppningen: din egen mun
+      if (t.every((v) => holes[0].has(v)) || t.every((v) => holes[1].has(v))) {
+        eyeIdx.push(...t.map((v) => dup.get(v)));
+        continue;
+      }
       idx.push(...t);
     }
     // Bara trianglar innanför ansiktets kontur
@@ -155,9 +170,11 @@ export class FaceSwapLayer {
       if (!inside(cxp, cyp)) continue;
       final.push(...t);
     }
+    final.push(...eyeIdx);
     // UV och mjuk kant: alfa 0 på konturen, 1 en bit in i ansiktet
-    const uv = new Float32Array(N * 2);
-    const alpha = new Float32Array(N);
+    const uv = new Float32Array(NV * 2);
+    const alpha = new Float32Array(NV);
+    const kind = new Float32Array(NV);
     const w = Math.hypot(pts[454][0] - pts[234][0], pts[454][1] - pts[234][1]);
     const distToOval = (x, y) => {
       let m = Infinity;
@@ -171,7 +188,7 @@ export class FaceSwapLayer {
       }
       return m;
     };
-    const ring = new Set([...EYE_L, ...EYE_R, ...LIPS_IN]);
+    const ring = new Set(LIPS_IN);
     for (let i = 0; i < N; i++) {
       uv[i * 2] = pts[i][0];
       uv[i * 2 + 1] = 1 - pts[i][1];
@@ -181,8 +198,16 @@ export class FaceSwapLayer {
       if (ring.has(i)) a *= 0.9;
       alpha[i] = a;
     }
+    EYE_DUP.forEach((v, k) => {
+      const d = N + k;
+      uv[d * 2] = uv[v * 2];
+      uv[d * 2 + 1] = uv[v * 2 + 1];
+      alpha[d] = 1;
+      kind[d] = k < EYE_L.length ? 1 : 2;
+    });
     this.geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
     this.geo.setAttribute('aAlpha', new THREE.BufferAttribute(alpha, 1));
+    this.geo.setAttribute('aKind', new THREE.BufferAttribute(kind, 1));
     this.geo.setIndex(final);
     this.targetSkin = new THREE.Vector3(...(def.skin || [0.5, 0.38, 0.32]));
     this.current = def;
@@ -264,6 +289,16 @@ export class FaceSwapLayer {
       this.vid[i * 2] = vx;
       this.vid[i * 2 + 1] = 1 - vy;
     }
+    EYE_DUP.forEach((v, k) => {
+      const d = N + k;
+      this.pos.copyWithin(d * 3, v * 3, v * 3 + 3);
+      this.vid.copyWithin(d * 2, v * 2, v * 2 + 2);
+    });
+    // Blink: EAR (ögats höjd/bredd) ~0,3 öppet, under ~0,15 stängt. EYE_L börjar i punkt 33 = earR.
+    const open = (e) => Math.min(1, Math.max(0, (e - 0.12) / 0.09));
+    const u = this.uniforms;
+    u.uEyeL.value += (open(face.earR ?? 0.3) - u.uEyeL.value) * 0.6;
+    u.uEyeR.value += (open(face.earL ?? 0.3) - u.uEyeR.value) * 0.6;
     this.geo.attributes.position.needsUpdate = true;
     this.geo.attributes.aVid.needsUpdate = true;
     this.uniforms.uGain.value.copy(this.gain);

@@ -12,7 +12,7 @@ import { EFFECTS } from '../app/effects.js';
 import { THROWABLES } from '../render/fx/throwables.js';
 import { BUILTIN_PERSONAS, PERSONA_GROUPS } from '../app/personas.js';
 import { SHARE_TABS, SHARE_PANELS } from './panelsShare.js';
-import { FACE_LIST, MAKEUP_PRESETS, faceImage } from '../app/faces.js';
+import { FACE_LIST, MAKEUP_PRESETS, LIVE_PLACES, faceImage, placePoster } from '../app/faces.js';
 import { SKEP_EMOJIS, SKEP_MAP, EMOJI_SETS, PLACEMENTS, TEXT_STYLES, svgUrl } from './emojis.js';
 
 export const esc = (s = '') => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -72,6 +72,9 @@ const ACC_GROUPS = [
 ];
 const COLOR_LABELS = { primary: 'Huvudfärg', accent: 'Detaljer', glow: 'Extra', skin: 'Hy', hair: 'Hår' };
 
+const liveCards = () =>
+  LIVE_PLACES.map((p) => `<button class="card thumb" data-action="livePlace" data-arg="${p.id}" data-tip="${esc(p.name)}|${esc(p.desc)}"><img src="${placePoster(p.id)}" alt="" loading="lazy" draggable="false"><span class="label">${p.icon} ${esc(p.name)}</span></button>`).join('');
+
 const PANELS = {
   aiface: {
     title: 'AI-ansikte',
@@ -100,6 +103,7 @@ const PANELS = {
             <label class="color" data-tip="Läppstiftsfärg|Tryck för att välja färg."><input type="color" data-bind="face.makeup.lipColor">Läppar</label>
             <label class="color" data-tip="Rougefärg|Tryck för att välja färg."><input type="color" data-bind="face.makeup.blushColor">Kinder</label>
           </div>`, 'Smink|Fungerar både på AI-ansiktet och på ditt eget.')}
+        ${section('Levande platser', `<div class="grid scenes live">${liveCards()}</div>`, 'Levande platser|Fotorealistiska, rörliga platser – riktig brasa, snöfall och neonregn.')}
         ${section('Plats', `<div class="row">${btn('realBg', 'Suddigt rum', 'eye', 'Suddigt rum|Ditt riktiga rum, suddigt – som i ett videosamtal.', '', 'blur')}${btn('tab', 'Välj plats', 'mountain', 'Platser|Tronsal, podium, röda mattan…', '', 'background')}</div>`)}
         ${note('Alla ansikten är AI-genererade och föreställer påhittade personer – ingen riktig människa. Det går inte att ladda upp någon annans ansikte.')}`;
     },
@@ -340,6 +344,7 @@ const PANELS = {
           ${note('Dra i reglagen för att skapa en helt egen röst. Dubbelklicka på ett reglage för att nollställa det.')}
           <div style="height:10px"></div>
           ${slider('voice.params.pitch', 'Tonhöjd', -12, 12, 1, 'st', 'Tonhöjd|Ljusare eller mörkare röst i halvtoner. +12 = en oktav upp.', 0)}
+          ${slider('voice.params.formant', 'Röstklang', -6, 6, 0.5, 'st', 'Röstklang (formant)|Ändrar röströrets storlek utan att ändra tonen. Plus = kvinnligare, minus = manligare.', 0)}
           ${select('voice.params.harmony', 'Stämmor (kör)', [
             { value: '', label: 'Inga' },
             { value: '4,7', label: 'Durackord' },

@@ -40,7 +40,7 @@ const cam = (group, id, name, icon, desc, acc, scene, voice, extra = {}) => ({
   desc,
   look: {
     video: { mode: 'camera' },
-    background: { type: extra.bgType ?? 'scene', scene },
+    background: { type: extra.live ? 'live' : extra.bgType ?? 'scene', scene, ...(extra.live ? { live: extra.live } : {}) },
     filter: { id: extra.filter ?? 'none', intensity: extra.intensity ?? 1 },
     face: { accessories: acc, warp: extra.warp ?? 'none', swap: extra.swap ?? 'none' },
     voice: { preset: voice },
@@ -54,6 +54,8 @@ const real = (id, name, icon, desc, swap, acc, scene, voice, extra = {}) => cam(
 
 export const BUILTIN_PERSONAS = [
   // ---------------------------------------------------------- Realistiska (AI-ansikten)
+  real('ai-tjej', 'Tjej – Elin', '👩', 'Se ut OCH låt som en tjej: fotorealistiskt ansikte och tjejröst i en mysig stuga med brasa.', 'elin', [], 'cabin', 'girl', { live: 'cozy' }),
+  real('ai-kille', 'Kille – Oskar', '👨', 'Se ut OCH låt som en kille: fotorealistiskt ansikte och killröst på en takterrass i neonstaden.', 'oskar', [], 'neon', 'guy', { live: 'city' }),
   real('ai-kungen', 'Kungen', '🤴', 'Fotorealistiskt kungaansikte på dig, krona och tronsal. Påhittad person.', 'king', ['crown'], 'throne', 'royal', { lowerThird: { name: 'H.M. Kungen', title: 'Tal från tronen' } }),
   real('ai-drottningen', 'Drottningen', '👸', 'Äldre drottning med tiara i tronsalen. Påhittad person.', 'queen', ['tiara'], 'throne', 'royal'),
   real('ai-presidenten', 'Presidenten', '🏛️', 'Presidentens ansikte vid podiet med flaggor. Påhittad person.', 'president', [], 'podium', 'speech', { lowerThird: { name: 'Presidenten', title: 'Talar till nationen' } }),
